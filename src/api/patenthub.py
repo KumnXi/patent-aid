@@ -165,24 +165,34 @@ class PatenthubClient:
         params = {"id": patent_id}
         return self._request("/api/patent/similar", params)
 
-    def get_full_patent(self, patent_id: str) -> Patent:
+    def get_full_patent(self, patent_id: str, search_info: Dict = None) -> Patent:
         """
         获取专利完整信息（基本信息+权利要求+说明书）
 
         Args:
             patent_id: 专利ID
+            search_info: 搜索结果中的基本信息（可选）
 
         Returns:
             完整的专利数据对象
         """
-        # 获取基本信息
-        base_data = self.get_basic_info(patent_id)
+        # 获取基本信息（如果搜索结果中有则优先使用）
+        if search_info:
+            base_data = search_info
+        else:
+            base_data = self.get_basic_info(patent_id)
 
         # 获取权利要求
         claims_data = self.get_claims(patent_id)
+        claims_text = claims_data.get("patent", {}).get("claims", "")
+        # 清理HTML标签
+        claims_text = claims_text.replace("<br/>", "\n").replace("<br>", "\n")
 
         # 获取说明书
         desc_data = self.get_description(patent_id)
+        desc_text = desc_data.get("patent", {}).get("description", "")
+        # 清理转义字符
+        desc_text = desc_text.replace("\\n", "\n").replace("\\t", "\t")
 
         # 组装专利对象
         patent = Patent(
@@ -191,15 +201,15 @@ class PatenthubClient:
             summary=base_data.get("summary", ""),
             applicant=base_data.get("applicant", ""),
             application_date=base_data.get("applicationDate", ""),
-            application_number=base_data.get("applicationNumber", ""),
-            document_number=base_data.get("documentNumber", ""),
+            application_number=base_data.get("applicationNumber", base_data.get("patent", {}).get("applicationNumber", "")),
+            document_number=base_data.get("documentNumber", base_data.get("patent", {}).get("documentNumber", "")),
             document_date=base_data.get("documentDate", ""),
             inventor=base_data.get("inventor", ""),
             main_ipc=base_data.get("mainIpc", ""),
             legal_status=base_data.get("legalStatus", ""),
             patent_type=base_data.get("type", ""),
-            claims=claims_data.get("claims", ""),
-            description=desc_data.get("description", "")
+            claims=claims_text,
+            description=desc_text
         )
 
         return patent
@@ -263,8 +273,9 @@ class PatenthubClient:
         category_dir = output_path / category
         category_dir.mkdir(exist_ok=True)
 
-        # 生成文件名
-        filename = f"{patent.id}_{patent.title[:30].replace('/', '_')}.md"
+        # 生成文件名（清理非法字符）
+        safe_title = patent.title[:30].replace('/', '_').replace('\\', '_').replace(':', '_').replace('*', '_').replace('?', '_').replace('"', '_').replace('<', '_').replace('>', '_').replace('|', '_')
+        filename = f"{patent.id}_{safe_title}.md"
         filepath = category_dir / filename
 
         # 生成Markdown内容

@@ -2,19 +2,100 @@
   "metadata": {
     "version": "1.0",
     "updated": "2024-01-01",
-    "total_patents": 0
+    "total_patents": 9
   },
-  "patents": [],
+  "patents": [
+    {
+      "id": "CN117977607A",
+      "title": "",
+      "category": "power_system",
+      "filepath": "data\\reference_patents\\power_system\\CN117977607A_.md",
+      "applicant": "",
+      "application_date": ""
+    },
+    {
+      "id": "CN121308011A",
+      "title": "一种含多园区虚拟电厂无功电压控制方法",
+      "category": "power_system",
+      "filepath": "data\\reference_patents\\power_system\\CN121308011A_一种含多园区虚拟电厂无功电压控制方法.md",
+      "applicant": "沈阳市凯沐虚拟电厂有限公司",
+      "application_date": "2025-11-13"
+    },
+    {
+      "id": "CN117977607B",
+      "title": "一种虚拟电厂负荷侧响应资源统一调度通用模型构建方法",
+      "category": "power_system",
+      "filepath": "data\\reference_patents\\power_system\\CN117977607B_一种虚拟电厂负荷侧响应资源统一调度通用模型构建方法.md",
+      "applicant": "芜湖市虚拟电厂有限责任公司; 清华四川能源互联网研究院",
+      "application_date": "2024-01-18"
+    },
+    {
+      "id": "CN119696475A",
+      "title": "分布式光伏电站",
+      "category": "renewable",
+      "filepath": "data\\reference_patents\\renewable\\CN119696475A_分布式光伏电站.md",
+      "applicant": "郑州祥和集团有限公司; 国网河南省电力公司郑州供电公司",
+      "application_date": "2024-12-10"
+    },
+    {
+      "id": "CN117439507A",
+      "title": "分布式光伏板",
+      "category": "renewable",
+      "filepath": "data\\reference_patents\\renewable\\CN117439507A_分布式光伏板.md",
+      "applicant": "辽宁育乔建设工程有限公司",
+      "application_date": "2023-10-25"
+    },
+    {
+      "id": "CN223638873U",
+      "title": "配电网故障隔离装置",
+      "category": "equipment",
+      "filepath": "data\\reference_patents\\equipment\\CN223638873U_配电网故障隔离装置.md",
+      "applicant": "郑州航空港兴港电力有限公司",
+      "application_date": "2024-11-22"
+    },
+    {
+      "id": "CN218546910U",
+      "title": "一种配电网故障定点仪",
+      "category": "power_system",
+      "filepath": "data\\reference_patents\\power_system\\CN218546910U_一种配电网故障定点仪.md",
+      "applicant": "国网安徽省电力有限公司蚌埠供电公司",
+      "application_date": "2022-11-01"
+    },
+    {
+      "id": "CN112510640A",
+      "title": "发电厂继电保护整定计算方法与系统",
+      "category": "protection",
+      "filepath": "data\\reference_patents\\protection\\CN112510640A_发电厂继电保护整定计算方法与系统.md",
+      "applicant": "蔡永旭",
+      "application_date": "2020-11-05"
+    },
+    {
+      "id": "CN112595907A",
+      "title": "一种智能站继电保护自动装置安全措施执行与测试方法",
+      "category": "protection",
+      "filepath": "data\\reference_patents\\protection\\CN112595907A_一种智能站继电保护自动装置安全措施执行与测试方法.md",
+      "applicant": "蔡永旭",
+      "application_date": "2020-11-05"
+    }
+  ],
   "categories": {
     "power_system": {
       "name": "电力系统",
-      "count": 0,
-      "patents": []
+      "count": 4,
+      "patents": [
+        "CN117977607A",
+        "CN121308011A",
+        "CN117977607B",
+        "CN218546910U"
+      ]
     },
     "renewable": {
       "name": "新能源",
-      "count": 0,
-      "patents": []
+      "count": 2,
+      "patents": [
+        "CN119696475A",
+        "CN117439507A"
+      ]
     },
     "smart_grid": {
       "name": "智能电网",
@@ -23,13 +104,23 @@
     },
     "protection": {
       "name": "继电保护",
-      "count": 0,
-      "patents": []
+      "count": 2,
+      "patents": [
+        "CN112510640A",
+        "CN112595907A"
+      ]
     },
     "automation": {
       "name": "电力自动化",
       "count": 0,
       "patents": []
+    },
+    "equipment": {
+      "name": "equipment",
+      "count": 1,
+      "patents": [
+        "CN223638873U"
+      ]
     }
   },
   "learning_points": {
