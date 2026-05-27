@@ -15,6 +15,64 @@ user_invocable: true
 3. **一致性检查** — 确保各部分之间的逻辑一致
 4. **风险预警** — 提前发现可能导致驳回的问题
 5. **行动建议** — 给出具体的下一步行动
+6. **方向守护** — 确保专利撰写不偏离核心创新目标（最重要！）
+
+## 方向守护机制
+
+**这是监督官最重要的职责。** 每个阶段都要检查：当前工作是否还围绕最初的技术交底书的核心创新点？
+
+### 方向锚定
+
+在技术交底确认后，监督官建立"方向锚点"：
+
+```
+## 🎯 方向锚点（不可更改）
+
+**核心创新**：[一句话概括]
+**技术问题**：[要解决什么问题]
+**技术方案**：[怎么解决的]
+**预期效果**：[达到什么效果]
+
+⚠️ 所有后续工作必须围绕以上锚点展开，偏离时立即预警。
+```
+
+### 方向偏离检测
+
+在每个阶段审查时，额外检查以下偏离信号：
+
+| 偏离类型 | 表现 | 处理 |
+|---------|------|------|
+| **创新点漂移** | 权利要求保护的不是原始创新点 | 🔴 阻断，要求回到核心创新 |
+| **范围偏离** | 保护范围过大（包含无关内容）或过小（漏掉核心特征） | 🔴 阻断，调整保护范围 |
+| **技术方案篡改** | 说明书中描述的方案与交底书不一致 | 🔴 阻断，修正技术方案 |
+| **效果夸大** | 技术效果超出交底书所述或无法从方案推导 | 🟡 警告，要求有依据 |
+| **无关内容混入** | 引入交底书未提及的技术特征或背景 | 🟡 警告，建议删除 |
+| **主题偏移** | 发明名称或技术领域偏离原始方向 | 🟡 警告，确认是否合理 |
+
+### 方向一致性检查清单
+
+每个阶段必须检查：
+- [ ] 当前内容是否围绕核心创新点？
+- [ ] 是否引入了交底书未提及的内容？
+- [ ] 是否遗漏了交底书中的关键特征？
+- [ ] 保护范围是否与创新点匹配？
+- [ ] 技术效果是否可从技术方案推导？
+
+### 偏离处理流程
+
+```
+检测到偏离
+    ↓
+输出偏离报告：
+  - 偏离类型
+  - 偏离位置（哪个阶段、哪个具体位置）
+  - 偏离内容（当前写了什么，应该是什么）
+  - 建议修正（怎么改回来）
+    ↓
+用户确认修正方案
+    ↓
+回退到相应阶段重新撰写
+```
 
 ## 工作流程
 
@@ -87,6 +145,11 @@ user_invocable: true
 ```
 ## 🔍 监督报告
 
+### 🎯 方向一致性
+- **方向检查**：✅ 通过 / ⚠️ 偏离 / ❌ 严重偏离
+- **偏离描述**：[如有偏离，说明具体偏离内容]
+- **修正建议**：[如有偏离，说明如何修正]
+
 ### 质量评估
 - **当前阶段评分**：[A/B/C/D]
 - **主要优点**：[列举]
@@ -127,14 +190,21 @@ user_invocable: true
   "title": "发明名称",
   "created_at": "2024-01-01",
   "updated_at": "2024-01-01",
-  "stages": {
-    "disclosure": {"status": "completed", "score": "A", "completed_at": "2024-01-01"},
-    "extraction": {"status": "completed", "score": "B", "completed_at": "2024-01-01"},
-    "claims": {"status": "in_progress", "score": null, "completed_at": null},
-    "specification": {"status": "pending", "score": null, "completed_at": null},
-    "compliance": {"status": "pending", "score": null, "completed_at": null},
-    "output": {"status": "pending", "score": null, "completed_at": null}
+  "direction_anchor": {
+    "core_innovation": "一句话核心创新点",
+    "technical_problem": "要解决的技术问题",
+    "technical_solution": "技术方案概述",
+    "expected_effect": "预期技术效果"
   },
+  "stages": {
+    "disclosure": {"status": "completed", "score": "A", "direction_check": "pass", "completed_at": "2024-01-01"},
+    "extraction": {"status": "completed", "score": "B", "direction_check": "pass", "completed_at": "2024-01-01"},
+    "claims": {"status": "in_progress", "score": null, "direction_check": null, "completed_at": null},
+    "specification": {"status": "pending", "score": null, "direction_check": null, "completed_at": null},
+    "compliance": {"status": "pending", "score": null, "direction_check": null, "completed_at": null},
+    "output": {"status": "pending", "score": null, "direction_check": null, "completed_at": null}
+  },
+  "direction_drifts": [],
   "blockers": [],
   "risks": []
 }
