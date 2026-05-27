@@ -1,0 +1,104 @@
+{
+  "metadata": {
+    "category": "通用技术效果描述",
+    "description": "适用于各类专利的通用效果描述模板",
+    "version": "1.0"
+  },
+  "effect_categories": [
+    {
+      "category": "效率提升",
+      "qualitative_descriptions": [
+        "有效提高...效率",
+        "显著提升...的工作效率",
+        "改善...的运行效率",
+        "优化...的处理效率",
+        "提升...的利用率"
+      ],
+      "quantitative_template": "根据{数据来源}，采用本方案后，{指标}从{原始值}提升至{改进值}，提升幅度为{百分比}。",
+      "forbidden_patterns": [
+        "提高XX%",
+        "效率提升XX倍",
+        "节省XX时间"
+      ]
+    },
+    {
+      "category": "成本降低",
+      "qualitative_descriptions": [
+        "有效降低...成本",
+        "减少...的投入",
+        "降低...的运维成本",
+        "节约...资源消耗",
+        "减少...的人力需求"
+      ],
+      "quantitative_template": "根据{数据来源}，采用本方案后，{成本项}降低{金额或百分比}。",
+      "forbidden_patterns": [
+        "节省XX元",
+        "成本降低XX%",
+        "投资回收期XX年"
+      ]
+    },
+    {
+      "category": "可靠性提升",
+      "qualitative_descriptions": [
+        "提高...的可靠性",
+        "增强...的稳定性",
+        "改善...的运行稳定性",
+        "提升...的抗干扰能力",
+        "增强...的容错能力"
+      ],
+      "quantitative_template": "根据{数据来源}，采用本方案后，{可靠性指标}达到{数值}。",
+      "forbidden_patterns": [
+        "可靠性达到XX%",
+        "故障率降低XX%",
+        "可用性XX%"
+      ]
+    },
+    {
+      "category": "响应速度",
+      "qualitative_descriptions": [
+        "提高...的响应速度",
+        "缩短...的响应时间",
+        "加快...的处理速度",
+        "实现快速...",
+        "实现实时..."
+      ],
+      "quantitative_template": "根据{数据来源}，采用本方案后，响应时间缩短至{时间}。",
+      "forbidden_patterns": [
+        "响应时间<XXms",
+        "速度提升XX倍",
+        "处理时间缩短XX%"
+      ]
+    },
+    {
+      "category": "精度提升",
+      "qualitative_descriptions": [
+        "提高...的精度",
+        "提升...的准确性",
+        "改善...的检测精度",
+        "增强...的识别准确率",
+        "提高...的控制精度"
+      ],
+      "quantitative_template": "根据{数据来源}，采用本方案后，{精度指标}达到{数值}。",
+      "forbidden_patterns": [
+        "精度达到XX%",
+        "误差<XX",
+        "准确率XX%"
+      ]
+    },
+    {
+      "category": "安全性提升",
+      "qualitative_descriptions": [
+        "提高...的安全性",
+        "增强...的安全防护能力",
+        "改善...的安全性能",
+        "降低...的安全风险",
+        "提升...的安全等级"
+      ],
+      "quantitative_template": "根据{数据来源}，采用本方案后，{安全指标}达到{标准或等级}。",
+      "forbidden_patterns": [
+        "安全事故率降低XX%",
+        "安全等级达到XX级"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "metadata": {
+    "category": "电力系统效果描述",
+    "description": "电力系统领域特有的技术效果描述",
+    "version": "1.0"
+  },
+  "effect_categories": [
+    {
+      "category": "电能质量",
+      "qualitative_descriptions": [
+        "改善电能质量",
+        "降低谐波含量",
+        "稳定系统电压",
+        "改善功率因数",
+        "减少电压波动"
+      ],
+      "relevant_standards": ["GB/T 12325", "GB/T 12326", "GB/T 14549"],
+      "standard_references": [
+        "符合GB/T 14549中关于谐波含量的要求",
+        "满足GB/T 12325中关于电压偏差的规定",
+        "达到GB/T 12326中关于电压波动和闪变的限值"
+      ]
+    },
+    {
+      "category": "供电可靠性",
+      "qualitative_descriptions": [
+        "提高供电可靠性",
+        "减少停电时间",
+        "缩小停电范围",
+        "实现快速故障隔离",
+        "保障连续供电"
+      ],
+      "relevant_standards": ["DL/T 5729"],
+      "standard_references": [
+        "满足DL/T 5729中关于供电可靠率的要求",
+        "符合电力系统安全稳定导则的规定"
+      ]
+    },
+    {
+      "category": "线损降低",
+      "qualitative_descriptions": [
+        "降低线路损耗",
+        "减少电能传输损耗",
+        "优化潮流分布，降低网损",
+        "提高输电效率",
+        "减少无功损耗"
+      ],
+      "relevant_standards": ["DL/T 686"],
+      "standard_references": [
+        "满足DL/T 686中关于线损率的要求"
+      ]
+    },
+    {
+      "category": "故障处理",
+      "qualitative_descriptions": [
+        "实现故障快速定位",
+        "实现故障自动隔离",
+        "缩短故障处理时间",
+        "减少故障影响范围",
+        "实现非故障区域快速恢复供电"
+      ],
+      "relevant_standards": ["DL/T 1773"],
+      "standard_references": [
+        "满足DL/T 1773中关于故障处理时间的要求"
+      ]
+    },
+    {
+      "category": "设备保护",
+      "qualitative_descriptions": [
+        "延长设备使用寿命",
+        "降低设备故障率",
+        "减少设备维护需求",
+        "实现设备状态监测",
+        "预防设备故障"
+      ],
+      "relevant_standards": ["GB/T 14285"],
+      "standard_references": [
+        "符合GB/T 14285中关于继电保护的要求"
+      ]
+    }
+  ]
+}

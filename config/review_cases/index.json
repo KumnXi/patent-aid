@@ -1,0 +1,40 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "updated": "2024-01-01",
+    "total_cases": 0
+  },
+  "cases": [],
+  "categories": {
+    "novelty_issues": {
+      "name": "新颖性问题",
+      "count": 0,
+      "cases": []
+    },
+    "inventive_issues": {
+      "name": "创造性问题",
+      "count": 0,
+      "cases": []
+    },
+    "support_issues": {
+      "name": "支持性问题",
+      "count": 0,
+      "cases": []
+    },
+    "clarity_issues": {
+      "name": "清楚性问题",
+      "count": 0,
+      "cases": []
+    },
+    "sufficiency_issues": {
+      "name": "充分公开问题",
+      "count": 0,
+      "cases": []
+    }
+  },
+  "learning_points": {
+    "common_patterns": [],
+    "effective_responses": [],
+    "pitfalls_to_avoid": []
+  }
+}
