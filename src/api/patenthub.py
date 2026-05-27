@@ -265,7 +265,7 @@ class PatenthubClient:
 
         return patents
 
-    def download_pdf(self, patent_id: str, output_dir: str = "data/reference_patents") -> Optional[str]:
+    def download_pdf(self, patent_id: str, output_dir: str = "data/patent_pdfs") -> Optional[str]:
         """
         下载专利PDF全文
 
@@ -276,6 +276,17 @@ class PatenthubClient:
         Returns:
             PDF文件路径，失败返回None
         """
+        # 先获取专利基本信息，检查是否有PDF
+        base_data = self.get_basic_info(patent_id)
+        patent_info = base_data.get("patent", {})
+
+        # 检查pdfList
+        pdf_list = patent_info.get("pdfList", [])
+        if not pdf_list:
+            print(f"专利 {patent_id} 没有可用的PDF")
+            return None
+
+        # 使用API下载PDF
         url = f"{self.BASE_URL}/api/pdf"
         params = {
             "t": self.token,
@@ -311,12 +322,33 @@ class PatenthubClient:
                 return str(filepath)
             else:
                 # 可能是错误页面或限额用完
-                print(f"PDF下载失败: 非PDF响应 (Content-Type: {content_type})")
+                print(f"PDF下载失败: 可能是今日额度已用完或接口错误")
+                print(f"提示: 免费账户每天限10次PDF下载")
                 return None
 
         except Exception as e:
             print(f"PDF下载异常: {str(e)}")
             return None
+
+    def get_pdf_info(self, patent_id: str) -> Dict[str, Any]:
+        """
+        获取专利PDF信息（不实际下载）
+
+        Args:
+            patent_id: 专利ID
+
+        Returns:
+            PDF信息字典
+        """
+        base_data = self.get_basic_info(patent_id)
+        patent_info = base_data.get("patent", {})
+
+        return {
+            "id": patent_id,
+            "title": patent_info.get("title", ""),
+            "pdf_list": patent_info.get("pdfList", []),
+            "has_pdf": len(patent_info.get("pdfList", [])) > 0
+        }
 
     def save_patent_to_file(self, patent: Patent, output_dir: str = "data/reference_patents"):
         """
