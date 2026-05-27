@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output
+output/*.docx
+output/*.pdf
+
+# Data (large files)
+data/raw/
+*.csv
+
+# Secrets
+.env
+*.key
+
+# Claude Code local settings
+.claude/settings.local.json
