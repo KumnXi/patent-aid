@@ -215,7 +215,8 @@ class PatenthubClient:
         return patent
 
     def search_power_patents(self, keywords: List[str] = None,
-                              page: int = 1, page_size: int = 20) -> List[Patent]:
+                              page: int = 1, page_size: int = 20,
+                              authorized_only: bool = True) -> List[Patent]:
         """
         搜索电力领域专利
 
@@ -223,6 +224,7 @@ class PatenthubClient:
             keywords: 关键词列表
             page: 页码
             page_size: 每页条数
+            authorized_only: 是否只获取授权且有效的专利
 
         Returns:
             专利列表
@@ -231,7 +233,13 @@ class PatenthubClient:
             keywords = ["电力系统", "配电网", "智能电网", "变电站"]
 
         # 构建检索式
-        query = " OR ".join(keywords)
+        keyword_query = " OR ".join(keywords)
+
+        # 如果只获取授权专利，添加过滤条件
+        if authorized_only:
+            query = f"({keyword_query}) AND type:发明授权 AND legalStatus:有效专利"
+        else:
+            query = keyword_query
 
         # 搜索
         result = self.search(query, page=page, page_size=page_size)
@@ -256,6 +264,59 @@ class PatenthubClient:
             patents.append(patent)
 
         return patents
+
+    def download_pdf(self, patent_id: str, output_dir: str = "data/reference_patents") -> Optional[str]:
+        """
+        下载专利PDF全文
+
+        Args:
+            patent_id: 专利ID
+            output_dir: 输出目录
+
+        Returns:
+            PDF文件路径，失败返回None
+        """
+        url = f"{self.BASE_URL}/api/pdf"
+        params = {
+            "t": self.token,
+            "id": patent_id,
+            "v": 1
+        }
+
+        try:
+            response = self.session.get(url, params=params, timeout=60, stream=True)
+
+            # 检查是否是PDF文件
+            content_type = response.headers.get("Content-Type", "")
+            if "application/pdf" in content_type or "application/octet-stream" in content_type:
+                # 确定保存路径
+                output_path = Path(output_dir)
+                output_path.mkdir(parents=True, exist_ok=True)
+
+                # 从Content-Disposition获取文件名
+                disposition = response.headers.get("Content-Disposition", "")
+                if "filename" in disposition:
+                    filename = disposition.split("filename=")[-1].strip('"')
+                else:
+                    filename = f"{patent_id}.pdf"
+
+                filepath = output_path / filename
+
+                # 保存文件
+                with open(filepath, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+
+                print(f"PDF已下载: {filepath}")
+                return str(filepath)
+            else:
+                # 可能是错误页面或限额用完
+                print(f"PDF下载失败: 非PDF响应 (Content-Type: {content_type})")
+                return None
+
+        except Exception as e:
+            print(f"PDF下载异常: {str(e)}")
+            return None
 
     def save_patent_to_file(self, patent: Patent, output_dir: str = "data/reference_patents"):
         """
