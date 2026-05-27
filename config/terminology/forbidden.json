@@ -1,0 +1,169 @@
+{
+  "metadata": {
+    "category": "禁用词库",
+    "description": "专利文件中绝对不能出现的表述，包括口语化、非专业、AI痕迹明显的用语",
+    "version": "1.0",
+    "updated": "2024-01-01"
+  },
+  "categories": [
+    {
+      "category": "口语化表述",
+      "description": "不专业的口语化表达",
+      "forbidden_terms": [
+        {
+          "forbidden": "电线",
+          "correct": "导线/电缆/线路",
+          "reason": "非专业术语"
+        },
+        {
+          "forbidden": "电闸",
+          "correct": "断路器/隔离开关",
+          "reason": "非专业术语"
+        },
+        {
+          "forbidden": "电表",
+          "correct": "电能表/电度表",
+          "reason": "非专业术语"
+        },
+        {
+          "forbidden": "插头",
+          "correct": "连接器/插接件",
+          "reason": "非专业术语"
+        },
+        {
+          "forbidden": "插座",
+          "correct": "电源插座/插接座",
+          "reason": "非专业术语"
+        },
+        {
+          "forbidden": "电池",
+          "correct": "蓄电池/储能电池",
+          "reason": "需具体化"
+        },
+        {
+          "forbidden": "充电",
+          "correct": "电能补给/充电过程",
+          "reason": "需具体化"
+        }
+      ]
+    },
+    {
+      "category": "AI痕迹表述",
+      "description": "典型的AI生成内容特征表述",
+      "forbidden_terms": [
+        {
+          "forbidden": "经实验证明",
+          "correct": "根据实验结果",
+          "reason": "除非真的有实验数据"
+        },
+        {
+          "forbidden": "测试结果表明",
+          "correct": "根据测试数据",
+          "reason": "除非真的有测试数据"
+        },
+        {
+          "forbidden": "显著提高/降低",
+          "correct": "有效提高/降低",
+          "reason": "'显著'暗示有数据支撑"
+        },
+        {
+          "forbidden": "大幅改善",
+          "correct": "有效改善",
+          "reason": "'大幅'暗示有数据支撑"
+        },
+        {
+          "forbidden": "明显优于",
+          "correct": "相比...具有优势",
+          "reason": "'明显'暗示有对比数据"
+        },
+        {
+          "forbidden": "提高XX%",
+          "correct": "有效提高",
+          "reason": "除非有实验数据支撑"
+        },
+        {
+          "forbidden": "降低XX%",
+          "correct": "有效降低",
+          "reason": "除非有实验数据支撑"
+        },
+        {
+          "forbidden": "节省XX",
+          "correct": "减少...消耗",
+          "reason": "除非有实验数据支撑"
+        }
+      ]
+    },
+    {
+      "category": "模糊表述",
+      "description": "专利文件中不应出现的模糊用语",
+      "forbidden_terms": [
+        {
+          "forbidden": "等等",
+          "correct": "等",
+          "reason": "专利文件中只用单字'等'"
+        },
+        {
+          "forbidden": "诸如此类",
+          "correct": "等",
+          "reason": "过于口语化"
+        },
+        {
+          "forbidden": "不言而喻",
+          "correct": "删除该表述",
+          "reason": "专利文件需明确描述"
+        },
+        {
+          "forbidden": "众所周知",
+          "correct": "删除或具体说明",
+          "reason": "专利文件需明确描述"
+        },
+        {
+          "forbidden": "大约",
+          "correct": "约/约为",
+          "reason": "专利文件用语需简洁"
+        },
+        {
+          "forbidden": "左右",
+          "correct": "约/约为",
+          "reason": "专利文件用语需简洁"
+        }
+      ]
+    },
+    {
+      "category": "商业宣传用语",
+      "description": "专利文件中不应出现的商业宣传",
+      "forbidden_terms": [
+        {
+          "forbidden": "领先",
+          "correct": "删除",
+          "reason": "商业宣传用语"
+        },
+        {
+          "forbidden": "首创",
+          "correct": "删除",
+          "reason": "商业宣传用语"
+        },
+        {
+          "forbidden": "最佳",
+          "correct": "优选",
+          "reason": "商业宣传用语"
+        },
+        {
+          "forbidden": "最优",
+          "correct": "优选",
+          "reason": "商业宣传用语"
+        },
+        {
+          "forbidden": "完美",
+          "correct": "删除",
+          "reason": "商业宣传用语"
+        },
+        {
+          "forbidden": "革命性",
+          "correct": "删除",
+          "reason": "商业宣传用语"
+        }
+      ]
+    }
+  ]
+}

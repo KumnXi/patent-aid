@@ -1,0 +1,91 @@
+{
+  "metadata": {
+    "category": "智能电网术语",
+    "version": "1.0",
+    "updated": "2024-01-01",
+    "source": "GB/T 36572、DL/T 1773"
+  },
+  "terms": [
+    {
+      "term": "智能电网",
+      "aliases": ["智能电力系统", "智慧电网"],
+      "forbidden": ["数字电网", "自动化电网"],
+      "definition": "将先进的传感量测技术、信息通信技术、分析决策技术、自动控制技术和能源电力技术与电力系统进行深度融合，形成高度信息化、自动化、互动化的现代电网",
+      "english": "smart grid",
+      "standards": ["GB/T 36572"],
+      "usage_notes": "注意与主动配电网、能源互联网的区别"
+    },
+    {
+      "term": "配电自动化",
+      "aliases": ["配网自动化", "DA"],
+      "forbidden": ["自动配电", "配电控制"],
+      "definition": "以配电网一次网架和设备为基础，综合利用计算机、信息及通信等技术，并通过与相关应用系统的信息集成，实现对配电网的监测、控制和快速故障隔离",
+      "english": "distribution automation",
+      "standards": ["DL/T 1773"],
+      "usage_notes": "包含配电SCADA、馈线自动化等"
+    },
+    {
+      "term": "馈线自动化",
+      "aliases": ["FA", "故障自动隔离"],
+      "forbidden": ["线路自动化", "自动切换"],
+      "definition": "利用自动化装置，实现配电线路故障的自动检测、隔离和非故障区域供电恢复",
+      "english": "feeder automation",
+      "standards": ["DL/T 1773"],
+      "usage_notes": "注意区分就地型和集中型"
+    },
+    {
+      "term": "高级量测体系",
+      "aliases": ["AMI", "高级计量架构"],
+      "forbidden": ["智能电表系统", "远程抄表"],
+      "definition": "由智能电表、通信网络、数据管理系统和用户门户组成的系统",
+      "english": "Advanced Metering Infrastructure, AMI",
+      "standards": ["GB/T 36572"],
+      "usage_notes": "首次出现写全称，后续可用AMI"
+    },
+    {
+      "term": "需求响应",
+      "aliases": ["需求侧响应", "DR"],
+      "forbidden": ["负荷调节", "用电控制"],
+      "definition": "电力用户根据市场价格信号或激励机制，改变其用电模式的行为",
+      "english": "demand response",
+      "standards": ["GB/T 36572"],
+      "usage_notes": "注意区分价格型需求响应和激励型需求响应"
+    },
+    {
+      "term": "微电网",
+      "aliases": ["微网", "微电力系统"],
+      "forbidden": ["小型电网", "局部电网"],
+      "definition": "由分布式电源、储能装置、能量转换装置、负荷、监控和保护装置等组成的小型发配电系统",
+      "english": "microgrid",
+      "standards": ["GB/T 36547"],
+      "usage_notes": "注意区分并网型微电网和独立型微电网"
+    },
+    {
+      "term": "主动配电网",
+      "aliases": ["ADN"],
+      "forbidden": ["智能配电网", "高级配电网"],
+      "definition": "可以主动管理分布式电源、储能和可控负荷等分布式资源的配电网",
+      "english": "active distribution network",
+      "standards": ["GB/T 40593"],
+      "usage_notes": "注意与智能电网概念的区别"
+    },
+    {
+      "term": "电力物联网",
+      "aliases": ["电力IoT"],
+      "forbidden": ["电力互联网", "电网物联网"],
+      "definition": "将物联网技术应用于电力系统，实现电力设备的全面感知、互联互通和智能化控制",
+      "english": "power Internet of Things",
+      "standards": ["Q/GDW 11710"],
+      "usage_notes": "国家电网公司提出的概念"
+    },
+    {
+      "term": "能源互联网",
+      "aliases": ["能源Internet"],
+      "forbidden": ["互联网能源", "智慧能源网"],
+      "definition": "以电力系统为核心，以互联网为手段，以分布式可再生能源为主要一次能源，与天然气网络、交通网络等其他系统紧密耦合形成的新型能源利用体系",
+      "english": "Energy Internet",
+      "standards": ["GB/T 40593"],
+      "usage_notes": "注意与智能电网、微电网概念的区别"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "updated": "2024-01-01",
+    "total_patents": 0
+  },
+  "patents": [],
+  "categories": {
+    "power_system": {
+      "name": "电力系统",
+      "count": 0,
+      "patents": []
+    },
+    "renewable": {
+      "name": "新能源",
+      "count": 0,
+      "patents": []
+    },
+    "smart_grid": {
+      "name": "智能电网",
+      "count": 0,
+      "patents": []
+    },
+    "protection": {
+      "name": "继电保护",
+      "count": 0,
+      "patents": []
+    },
+    "automation": {
+      "name": "电力自动化",
+      "count": 0,
+      "patents": []
+    }
+  },
+  "learning_points": {
+    "innovation_patterns": [],
+    "claim_structures": [],
+    "effect_descriptions": [],
+    "terminology_usage": [],
+    "implementation_patterns": []
+  }
+}

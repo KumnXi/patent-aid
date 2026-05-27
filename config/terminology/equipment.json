@@ -1,0 +1,100 @@
+{
+  "metadata": {
+    "category": "电力设备术语",
+    "version": "1.0",
+    "updated": "2024-01-01",
+    "source": "GB/T 2900系列"
+  },
+  "terms": [
+    {
+      "term": "变压器",
+      "aliases": ["变电器"],
+      "forbidden": ["变压装置", "电压转换器"],
+      "definition": "利用电磁感应原理，将一种电压等级的交流电变换成同频率的另一种电压等级的交流电的静止电气设备",
+      "english": "transformer",
+      "standards": ["GB/T 2900.50"],
+      "usage_notes": "注意区分升压变压器和降压变压器"
+    },
+    {
+      "term": "断路器",
+      "aliases": ["开关"],
+      "forbidden": ["电闸", "空气开关"],
+      "definition": "能够关合、承载和开断运行回路正常电流，并能在规定时间内关合、承载和开断规定的异常电流的开关装置",
+      "english": "circuit breaker",
+      "standards": ["GB/T 2900.20"],
+      "usage_notes": "注意区分真空断路器、SF6断路器等"
+    },
+    {
+      "term": "隔离开关",
+      "aliases": ["刀闸", "隔离刀闸"],
+      "forbidden": ["分离开关", "断开开关"],
+      "definition": "在分位置时，触头间有符合规定要求的绝缘距离和明显的断开标志",
+      "english": "disconnector",
+      "standards": ["GB/T 2900.20"],
+      "usage_notes": "不能带负荷操作"
+    },
+    {
+      "term": "电流互感器",
+      "aliases": ["CT", "TA"],
+      "forbidden": ["电流转换器", "电流传感器"],
+      "definition": "将大电流变换为小电流的电气设备",
+      "english": "current transformer",
+      "standards": ["GB/T 20840"],
+      "usage_notes": "首次出现写全称，后续可用CT或TA"
+    },
+    {
+      "term": "电压互感器",
+      "aliases": ["PT", "TV"],
+      "forbidden": ["电压转换器", "电压传感器"],
+      "definition": "将高电压变换为低电压的电气设备",
+      "english": "voltage transformer",
+      "standards": ["GB/T 20840"],
+      "usage_notes": "首次出现写全称，后续可用PT或TV"
+    },
+    {
+      "term": "无功补偿装置",
+      "aliases": ["无功补偿设备", "补偿装置"],
+      "forbidden": ["功率补偿器", "电容补偿"],
+      "definition": "向电力系统提供无功功率的装置",
+      "english": "reactive power compensation device",
+      "standards": ["GB/T 2900.50"],
+      "usage_notes": "包括电容器、电抗器、SVG等"
+    },
+    {
+      "term": "静止无功发生器",
+      "aliases": ["SVG", "STATCOM"],
+      "forbidden": ["无功发生器", "动态补偿器"],
+      "definition": "由自换相的电力半导体桥式变流器来进行动态无功补偿的装置",
+      "english": "Static Var Generator, SVG",
+      "standards": ["GB/T 2900.50"],
+      "usage_notes": "首次出现写全称，后续可用SVG"
+    },
+    {
+      "term": "有源滤波器",
+      "aliases": ["APF", "有源电力滤波器"],
+      "forbidden": ["滤波装置", "谐波消除器"],
+      "definition": "由电力电子元件构成的，能够动态抑制谐波和补偿无功的装置",
+      "english": "Active Power Filter, APF",
+      "standards": ["GB/T 14549"],
+      "usage_notes": "首次出现写全称，后续可用APF"
+    },
+    {
+      "term": "配电变压器",
+      "aliases": ["配变", "配电变"],
+      "forbidden": ["低压变压器", "供电变压器"],
+      "definition": "安装在配电系统中，将高压电能变换成低压电能的变压器",
+      "english": "distribution transformer",
+      "standards": ["GB/T 2900.50"],
+      "usage_notes": "注意与电力变压器的区别"
+    },
+    {
+      "term": "开关柜",
+      "aliases": ["开关设备", "高压开关柜"],
+      "forbidden": ["配电箱", "控制柜"],
+      "definition": "用于电力系统发电、输电、配电、电能转换和消耗中起通断、控制或保护等作用的电气设备",
+      "english": "switchgear",
+      "standards": ["GB/T 3906"],
+      "usage_notes": "注意区分高压开关柜和低压开关柜"
+    }
+  ]
+}

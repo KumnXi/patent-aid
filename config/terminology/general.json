@@ -1,0 +1,100 @@
+{
+  "metadata": {
+    "category": "电力通用术语",
+    "version": "1.0",
+    "updated": "2024-01-01",
+    "source": "GB/T 2900系列、DL/T系列"
+  },
+  "terms": [
+    {
+      "term": "电力系统",
+      "aliases": ["电力网络", "电网"],
+      "forbidden": ["供电网", "电流系统"],
+      "definition": "由发电、输电、变电、配电和用电等环节组成的电能生产与消费系统",
+      "english": "power system",
+      "standards": ["GB/T 2900.50"],
+      "usage_notes": "泛指整个电力系统时使用，特指某一部分时用具体术语"
+    },
+    {
+      "term": "配电网",
+      "aliases": ["配电网络", "配电系统"],
+      "forbidden": ["供电网", "低压电网"],
+      "definition": "在电力网中起分配电能作用的网络",
+      "english": "distribution network",
+      "standards": ["GB/T 2900.50", "DL/T 5729"],
+      "usage_notes": "注意区分高压配电网和低压配电网"
+    },
+    {
+      "term": "输电线路",
+      "aliases": ["输电线", "传输线"],
+      "forbidden": ["电线", "电缆线"],
+      "definition": "连接发电厂、变电站和负荷中心，用于输送电能的电力线路",
+      "english": "transmission line",
+      "standards": ["GB/T 2900.51"],
+      "usage_notes": "架空线路和电缆线路的统称"
+    },
+    {
+      "term": "变电站",
+      "aliases": ["变电所", "变电站"],
+      "forbidden": ["变压站", "电力站"],
+      "definition": "电力系统中对电压和电流进行变换、集中和分配的场所",
+      "english": "substation",
+      "standards": ["GB/T 2900.50"],
+      "usage_notes": "注意与开关站、换流站的区别"
+    },
+    {
+      "term": "负荷",
+      "aliases": ["负载", "用电负荷"],
+      "forbidden": ["电器", "用电量"],
+      "definition": "电力系统中所有用电设备所消耗的电功率",
+      "english": "load",
+      "standards": ["GB/T 2900.50"],
+      "usage_notes": "注意区分有功负荷和无功负荷"
+    },
+    {
+      "term": "有功功率",
+      "aliases": ["有效功率", "实功率"],
+      "forbidden": ["功率", "电量"],
+      "definition": "交流电路中实际消耗的功率",
+      "english": "active power",
+      "standards": ["GB/T 2900.50"],
+      "unit": "W, kW, MW"
+    },
+    {
+      "term": "无功功率",
+      "aliases": ["虚功率", "无功"],
+      "forbidden": ["无效功率"],
+      "definition": "交流电路中用于建立磁场和电场的功率",
+      "english": "reactive power",
+      "standards": ["GB/T 2900.50"],
+      "unit": "var, kvar, Mvar"
+    },
+    {
+      "term": "功率因数",
+      "aliases": ["力率"],
+      "forbidden": ["功率系数", "效率"],
+      "definition": "有功功率与视在功率的比值",
+      "english": "power factor",
+      "standards": ["GB/T 2900.50"],
+      "usage_notes": "范围0-1，越接近1越好"
+    },
+    {
+      "term": "电能质量",
+      "aliases": ["供电质量"],
+      "forbidden": ["电力质量", "电流质量"],
+      "definition": "供电电能的质量，包括电压、频率、波形等指标",
+      "english": "power quality",
+      "standards": ["GB/T 12325", "GB/T 12326", "GB/T 14549"],
+      "usage_notes": "注意区分电压质量、电流质量、供电质量"
+    },
+    {
+      "term": "谐波",
+      "aliases": ["谐波分量", "高次谐波"],
+      "forbidden": ["杂波", "干扰波"],
+      "definition": "频率为基波频率整数倍的正弦波",
+      "english": "harmonic",
+      "standards": ["GB/T 14549"],
+      "usage_notes": "注意谐波次数和谐波含量的表述"
+    }
+  ]
+}

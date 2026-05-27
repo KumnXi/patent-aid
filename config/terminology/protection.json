@@ -1,0 +1,82 @@
+{
+  "metadata": {
+    "category": "继电保护术语",
+    "version": "1.0",
+    "updated": "2024-01-01",
+    "source": "GB/T 14285、DL/T 584"
+  },
+  "terms": [
+    {
+      "term": "继电保护",
+      "aliases": ["保护装置", "继保"],
+      "forbidden": ["断电保护", "电力保护"],
+      "definition": "当电力系统中的电力元件或电力系统本身发生故障或不正常运行状态时，向运行人员发出告警信号或直接向所控制的断路器发出跳闸命令的一种自动化措施",
+      "english": "relay protection",
+      "standards": ["GB/T 14285"],
+      "usage_notes": "注意区分主保护和后备保护"
+    },
+    {
+      "term": "差动保护",
+      "aliases": ["差动", "电流差动保护"],
+      "forbidden": ["差值保护", "比较保护"],
+      "definition": "利用被保护元件各端电流相量差而动作的保护",
+      "english": "differential protection",
+      "standards": ["GB/T 14285"],
+      "usage_notes": "常用于变压器、发电机、母线保护"
+    },
+    {
+      "term": "距离保护",
+      "aliases": ["阻抗保护"],
+      "forbidden": ["长度保护", "范围保护"],
+      "definition": "利用电压和电流的比值（即阻抗）来反映故障点到保护安装处距离的保护",
+      "english": "distance protection",
+      "standards": ["GB/T 14285"],
+      "usage_notes": "注意距离保护的三段式配置"
+    },
+    {
+      "term": "零序保护",
+      "aliases": ["零序电流保护"],
+      "forbidden": ["接地保护", "漏电保护"],
+      "definition": "利用零序电流分量构成的保护",
+      "english": "zero-sequence protection",
+      "standards": ["GB/T 14285"],
+      "usage_notes": "主要用于接地故障保护"
+    },
+    {
+      "term": "重合闸",
+      "aliases": ["自动重合闸", "重合"],
+      "forbidden": ["重新合闸", "自动合闸"],
+      "definition": "线路故障切除后，自动将断路器重新合闸的装置",
+      "english": "auto-reclosing",
+      "standards": ["GB/T 14285"],
+      "usage_notes": "注意区分单相重合闸和三相重合闸"
+    },
+    {
+      "term": "失灵保护",
+      "aliases": ["断路器失灵保护"],
+      "forbidden": ["故障保护", "后备保护"],
+      "definition": "当断路器拒动时，由相邻断路器切除故障的保护",
+      "english": "breaker failure protection",
+      "standards": ["GB/T 14285"],
+      "usage_notes": "注意与后备保护的区别"
+    },
+    {
+      "term": "备自投",
+      "aliases": ["备用电源自动投入", "BZT"],
+      "forbidden": ["自动切换", "电源切换"],
+      "definition": "当工作电源因故障断开后，自动将备用电源投入的装置",
+      "english": "automatic transfer switching",
+      "standards": ["GB/T 14285"],
+      "usage_notes": "首次出现写全称，后续可用备自投"
+    },
+    {
+      "term": "保护整定",
+      "aliases": ["整定计算", "定值计算"],
+      "forbidden": ["保护设置", "参数设置"],
+      "definition": "根据系统运行方式和保护配置，计算保护装置的动作参数",
+      "english": "protection setting",
+      "standards": ["DL/T 584"],
+      "usage_notes": "注意整定值和整定原则的区别"
+    }
+  ]
+}

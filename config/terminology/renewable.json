@@ -1,0 +1,100 @@
+{
+  "metadata": {
+    "category": "新能源术语",
+    "version": "1.0",
+    "updated": "2024-01-01",
+    "source": "GB/T 19964、GB/T 36547、NB/T 32015"
+  },
+  "terms": [
+    {
+      "term": "分布式光伏",
+      "aliases": ["分布式光伏发电", "屋顶光伏"],
+      "forbidden": ["太阳能发电", "光伏板"],
+      "definition": "在用户所在场地或附近建设，以用户侧自发自用为主、多余电量上网且在配电网系统平衡调节为特征的光伏发电设施",
+      "english": "distributed photovoltaic",
+      "standards": ["GB/T 36547", "NB/T 32015"],
+      "usage_notes": "注意与集中式光伏电站的区别"
+    },
+    {
+      "term": "光伏发电系统",
+      "aliases": ["光伏系统", "PV系统"],
+      "forbidden": ["太阳能系统", "光电系统"],
+      "definition": "利用光伏效应将太阳能直接转换为电能的发电系统",
+      "english": "photovoltaic power generation system",
+      "standards": ["GB/T 19964"],
+      "usage_notes": "包含光伏阵列、逆变器、控制系统等"
+    },
+    {
+      "term": "光伏逆变器",
+      "aliases": ["逆变器", "PV逆变器"],
+      "forbidden": ["转换器", "变流器"],
+      "definition": "将光伏组件输出的直流电转换为交流电的装置",
+      "english": "photovoltaic inverter",
+      "standards": ["GB/T 37408"],
+      "usage_notes": "注意区分组串式逆变器和集中式逆变器"
+    },
+    {
+      "term": "最大功率点跟踪",
+      "aliases": ["MPPT", "最大功率追踪"],
+      "forbidden": ["功率优化", "最大效率追踪"],
+      "definition": "通过调整光伏组件的工作点，使其始终输出最大功率的控制方法",
+      "english": "Maximum Power Point Tracking, MPPT",
+      "standards": ["GB/T 37408"],
+      "usage_notes": "首次出现写全称，后续可用MPPT"
+    },
+    {
+      "term": "风电场",
+      "aliases": ["风力发电场", "风场"],
+      "forbidden": ["风机群", "风力站"],
+      "definition": "由一批风力发电机组或风力发电机组群组成的电站",
+      "english": "wind farm",
+      "standards": ["GB/T 19963"],
+      "usage_notes": "注意区分陆上风电场和海上风电场"
+    },
+    {
+      "term": "风力发电机组",
+      "aliases": ["风机", "风电机组"],
+      "forbidden": ["风力机", "风电设备"],
+      "definition": "将风能转换为电能的装置",
+      "english": "wind turbine generator system",
+      "standards": ["GB/T 20319"],
+      "usage_notes": "包含风轮、发电机、控制系统等"
+    },
+    {
+      "term": "储能系统",
+      "aliases": ["储能装置", "储能设备"],
+      "forbidden": ["蓄电池", "电池组"],
+      "definition": "能够存储电能并在需要时释放的系统",
+      "english": "energy storage system",
+      "standards": ["GB/T 36558", "GB/T 36547"],
+      "usage_notes": "注意区分电化学储能、物理储能等类型"
+    },
+    {
+      "term": "电池管理系统",
+      "aliases": ["BMS"],
+      "forbidden": ["电池控制器", "电池监控"],
+      "definition": "对电池组进行监控和管理的系统",
+      "english": "Battery Management System, BMS",
+      "standards": ["GB/T 34131"],
+      "usage_notes": "首次出现写全称，后续可用BMS"
+    },
+    {
+      "term": "充放电倍率",
+      "aliases": ["C率", "倍率"],
+      "forbidden": ["充电速度", "放电速度"],
+      "definition": "电池充放电电流与额定容量的比值",
+      "english": "charge-discharge rate",
+      "standards": ["GB/T 36276"],
+      "usage_notes": "例如0.5C、1C、2C等"
+    },
+    {
+      "term": "虚拟电厂",
+      "aliases": ["VPP", "虚拟发电厂"],
+      "forbidden": ["模拟电厂", "数字电厂"],
+      "definition": "通过先进信息通信技术和软件系统，实现分布式电源、储能系统、可控负荷等分布式资源的聚合和协调优化",
+      "english": "Virtual Power Plant, VPP",
+      "standards": ["GB/T 40593"],
+      "usage_notes": "首次出现写全称，后续可用VPP"
+    }
+  ]
+}
