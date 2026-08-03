@@ -76,13 +76,14 @@ class QualityReviewer:
             "implementation": self._check_implementation(disclosure),
             "relevance": self._check_relevance(disclosure, idea),
             "novelty": self._check_novelty(disclosure, idea, patent_comparison),
+            "support": self._check_support(disclosure, idea),
         }
 
         # 计算总分（加权平均）
         weights = {
             "structure": 15, "length": 10, "numbering": 10,
             "technical_depth": 20, "claims": 15, "implementation": 10,
-            "relevance": 10, "novelty": 10,
+            "relevance": 10, "novelty": 10, "support": 10,
         }
         total = sum(dimensions[k]["score"] * weights[k] for k in weights) / sum(weights.values())
 
@@ -191,6 +192,66 @@ class QualityReviewer:
         if not has_feature:
             detail += "，缺少'其特征在于'"
         return {"score": score, "detail": detail}
+
+    def _check_support(self, disclosure: str, idea: str) -> Dict:
+        """no-new-matter 校验：权利要求的技术特征能否在输入想法中找到依据
+
+        防止 LLM 编造与原始想法无关的技术内容（对应"修改不得超出原记载范围"）。
+        核心指标：想法的关键技术词有多少保留在权利要求中（core_coverage），
+        辅助指标：权利要求术语对想法的覆盖率（coverage，衡量是否整体漂移）。
+
+        Args:
+            disclosure: 交底书全文
+            idea: 原始技术想法
+
+        Returns:
+            {"score": int, "detail": str}
+        """
+        claims_match = re.search(r'权利要求.*?(?=##\s*十|$)', disclosure, re.DOTALL)
+        claims_text = claims_match.group(0) if claims_match else ""
+        if not claims_text:
+            return {"score": 50, "detail": "未提取到权利要求文本"}
+
+        idea_terms = self._extract_terms(idea)
+        claim_terms = self._extract_terms(claims_text)
+        if not idea_terms:
+            return {"score": 50, "detail": "想法术语不足，无法校验"}
+
+        # 想法核心词在权利要求中的保留率
+        core_covered = idea_terms & claim_terms
+        core_coverage = len(core_covered) / len(idea_terms)
+
+        # 权利要求术语对想法的覆盖率（防整体漂移）
+        coverage = len(idea_terms & claim_terms) / len(claim_terms) if claim_terms else 0
+
+        # 评分：核心词保留 80% 即满分，50% 约 60 分，<25% 视为严重漂移
+        score = min(100, core_coverage * 125)
+        score = round(score)
+
+        detail = f"想法核心词保留 {core_coverage*100:.0f}%，权利要求覆盖率 {coverage*100:.0f}%"
+        if core_coverage < 0.3:
+            detail += "（疑似脱离原始想法）"
+        elif core_coverage < 0.6:
+            detail += "（部分特征未在想法中找到依据）"
+        return {"score": score, "detail": detail}
+
+    @staticmethod
+    def _extract_terms(text: str) -> set:
+        """提取文本中的关键技术术语（jieba 分词 + 过滤常见停用词）"""
+        stop = {
+            "一个", "一种", "所述", "以及", "包括", "用于", "通过", "进行",
+            "具有", "可以", "能够", "实现", "根据", "该", "的", "和", "与",
+            "或", "为", "在", "于", "对", "从", "到", "上", "下", "内",
+            "外", "其", "此", "等", "将", "并", "及", "且", "采用", "设置",
+            "特征", "本发明", "公开", "提供", "涉及", "属于", "一种", "方法",
+            "装置", "系统", "包括", "步骤", "技术领域", "具体实施方式",
+        }
+        terms = set()
+        for t in jieba.lcut(text):
+            t = t.strip()
+            if len(t) >= 2 and t not in stop and not re.fullmatch(r'[\d\W_]+', t):
+                terms.add(t)
+        return terms
 
     def _check_implementation(self, text: str) -> Dict:
         """检查实施例充分性"""
@@ -377,6 +438,8 @@ class QualityReviewer:
                     suggestions.append("内容与输入想法相关性偏低，建议紧扣核心技术方案")
                 elif key == "novelty":
                     suggestions.append("与现有专利相似度较高，建议突出差异化创新点")
+                elif key == "support":
+                    suggestions.append("权利要求部分技术特征在原始想法中无依据，建议收紧为想法涵盖的范围内，避免超范围/编造")
 
         if comparisons and comparisons[0]["similarity"] > 0.5:
             suggestions.append(
