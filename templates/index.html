@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>专利撰写助手</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--primary:#2563eb;--primary-dark:#1d4ed8;--bg:#f1f5f9;--card:#fff;--text:#1e293b;--text2:#64748b;--border:#e2e8f0;--success:#10b981;--error:#ef4444;--accent:#7c3aed}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+        header{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;padding:20px 0}
+        .header-inner{max-width:1280px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
+        header h1{font-size:22px}
+        .status-badge{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);padding:4px 14px;border-radius:20px;font-size:13px}
+        .dot{width:8px;height:8px;border-radius:50%;background:#fbbf24}.dot.ok{background:var(--success)}
+        .tabs{max-width:1280px;margin:24px auto 0;padding:0 24px;display:flex;gap:4px}
+        .tab{padding:10px 24px;border-radius:8px 8px 0 0;cursor:pointer;font-size:14px;font-weight:500;background:#e2e8f0;color:var(--text2);transition:all .2s}
+        .tab.active{background:var(--card);color:var(--primary);box-shadow:0 -2px 4px rgba(0,0,0,.05)}
+        .tab:hover:not(.active){background:#cbd5e1}
+        .main{max-width:1280px;margin:0 auto;padding:0 24px 40px}
+        .panel{display:none;background:var(--card);border-radius:0 12px 12px 12px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:28px}
+        .panel.active{display:block}
+        label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+        textarea,input[type="text"],select{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;transition:border .2s}
+        textarea:focus,input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+        textarea{min-height:120px;resize:vertical}
+        .hint{font-size:12px;color:var(--text2);margin-top:4px}
+        .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;transition:all .2s}
+        .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
+        .btn-primary:disabled{background:#94a3b8;cursor:not-allowed}
+        .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}.btn-outline:hover{background:#f8fafc}
+        .gen-grid{display:grid;grid-template-columns:380px 1fr;gap:24px}
+        @media(max-width:900px){.gen-grid{grid-template-columns:1fr}}
+        .result-box{background:#fafafa;border:1px solid var(--border);border-radius:8px;padding:20px;max-height:560px;overflow-y:auto;font-size:14px;line-height:1.8}
+        .result-box h1{font-size:20px;margin:16px 0 8px}.result-box h2{font-size:17px;margin:20px 0 8px;color:var(--primary)}
+        .result-box h3{font-size:15px;margin:12px 0 6px}.result-box ul,.result-box ol{padding-left:20px}
+        .result-box hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+        .stats-row{display:flex;gap:16px;font-size:13px;color:var(--text2);margin-bottom:12px}
+        .search-bar{display:flex;gap:12px;margin-bottom:20px}.search-bar input{flex:1}
+        .filters{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+        .filters select,.filters input{width:auto;min-width:160px}
+        .result-count{font-size:13px;color:var(--text2);margin-bottom:12px}
+        .patent-list{display:flex;flex-direction:column;gap:12px}
+        .patent-card{border:1px solid var(--border);border-radius:8px;padding:16px;cursor:pointer;transition:all .2s}
+        .patent-card:hover{border-color:var(--primary);box-shadow:0 2px 8px rgba(37,99,235,.1)}
+        .patent-card h3{font-size:15px;margin-bottom:6px}
+        .patent-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text2)}
+        .patent-meta .tag{background:#eff6ff;color:var(--primary);padding:2px 8px;border-radius:4px}
+        .pdf-badge{background:#dc2626;color:#fff;padding:1px 6px;border-radius:3px;font-size:11px}
+        .pagination{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:20px}
+        .pagination button{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:13px}
+        .pagination button:disabled{opacity:.4;cursor:not-allowed}
+        .pagination .current{background:var(--primary);color:#fff;border-color:var(--primary)}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+        .stat-card{background:#f8fafc;border-radius:8px;padding:16px;text-align:center}
+        .stat-card .num{font-size:28px;font-weight:700;color:var(--primary)}.stat-card .label{font-size:13px;color:var(--text2);margin-top:4px}
+        .dist-section{margin-top:24px}.dist-section h3{font-size:15px;margin-bottom:12px}
+        .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px}
+        .bar-label{width:120px;text-align:right;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .bar-track{flex:1;height:20px;background:#f1f5f9;border-radius:4px;overflow:hidden}
+        .bar-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:4px}
+        .bar-count{width:40px;font-size:12px;color:var(--text2)}
+        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;justify-content:center;align-items:flex-start;padding:40px 20px;overflow-y:auto}
+        .modal-overlay.active{display:flex}
+        .modal{background:#fff;border-radius:12px;width:100%;max-width:900px;max-height:85vh;overflow-y:auto;padding:32px}
+        .modal h2{font-size:18px;margin-bottom:16px}
+        .modal-close{float:right;background:none;border:none;font-size:24px;cursor:pointer;color:var(--text2)}
+        .detail-section{margin-top:20px}
+        .detail-section h4{font-size:14px;color:var(--primary);margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:4px}
+        .detail-section pre{white-space:pre-wrap;word-break:break-all;font-size:13px;line-height:1.7;background:#f8fafc;padding:12px;border-radius:6px;max-height:300px;overflow-y:auto}
+        .detail-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px}
+        .detail-meta dt{color:var(--text2)}.detail-meta dd{font-weight:500}
+        .tab-btns{display:flex;gap:4px;margin-bottom:16px}
+        .tab-btn{padding:6px 16px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:13px}
+        .tab-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+        .pdf-container{width:100%;height:500px;border:1px solid var(--border);border-radius:8px;overflow:auto;position:relative;background:#525659;display:flex;justify-content:center}
+        .pdf-container canvas{display:block}
+        .pdf-toolbar{display:flex;align-items:center;justify-content:center;gap:12px;padding:8px;background:#333;color:#fff;font-size:13px;border-radius:8px 8px 0 0}
+        .pdf-toolbar button{background:#555;border:none;color:#fff;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:13px}
+        .pdf-toolbar button:hover{background:#666}.pdf-toolbar button:disabled{opacity:.4;cursor:not-allowed}
+        .loading{text-align:center;padding:40px;color:var(--text2)}
+        .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .error-msg{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px 14px;border-radius:8px;font-size:13px;margin-top:12px;display:none}
+        .error-msg.show{display:block}
+        .empty-state{text-align:center;padding:60px 20px;color:var(--text2)}
+        .empty-state .icon{font-size:48px;margin-bottom:12px}
+        .examples{margin-top:12px;display:flex;flex-wrap:wrap;gap:6px}
+        .chip{padding:4px 12px;background:#f1f5f9;border:1px solid var(--border);border-radius:16px;font-size:12px;cursor:pointer}
+        .chip:hover{background:#e0e7ff;border-color:var(--primary)}
+        .qr-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+        @media(max-width:900px){.qr-grid{grid-template-columns:1fr}}
+        .score-card{background:#f8fafc;border-radius:10px;padding:16px;text-align:center;border:1px solid var(--border)}
+        .score-card .big{font-size:36px;font-weight:700;color:var(--primary)}
+        .score-card .grade{display:inline-block;padding:2px 12px;border-radius:12px;font-size:14px;font-weight:600;margin-top:4px}
+        .grade-A{background:#d1fae5;color:#065f46}.grade-B{background:#dbeafe;color:#1e40af}.grade-C{background:#fef3c7;color:#92400e}.grade-D{background:#fee2e2;color:#991b1b}
+        .dim-list{display:flex;flex-direction:column;gap:8px}
+        .dim-row{display:flex;align-items:center;gap:8px;font-size:13px}
+        .dim-name{width:90px;text-align:right;color:var(--text2)}
+        .dim-bar{flex:1;height:16px;background:#f1f5f9;border-radius:4px;overflow:hidden}
+        .dim-fill{height:100%;border-radius:4px;transition:width .3s}
+        .dim-score{width:36px;font-weight:600;font-size:12px}
+        .cmp-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}
+        .cmp-table th,.cmp-table td{padding:8px 12px;border:1px solid var(--border);text-align:left}
+        .cmp-table th{background:#f8fafc;font-weight:600}
+        .batch-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px}
+        .batch-table th,.batch-table td{padding:8px 10px;border:1px solid var(--border);text-align:center}
+        .batch-table th{background:#f8fafc}
+    </style>
+</head>
+<body>
+    <header><div class="header-inner">
+        <h1>⚡ 专利撰写助手</h1>
+        <div class="status-badge"><span class="dot" id="dot"></span><span id="statusText">连接中...</span></div>
+    </div></header>
+
+    <div class="tabs">
+        <div class="tab active" data-tab="generate">📝 生成交底书</div>
+        <div class="tab" data-tab="search">🔍 专利搜索</div>
+        <div class="tab" data-tab="stats">📊 数据库概览</div>
+        <div class="tab" data-tab="quality">📋 质量审查</div>
+    </div>
+
+    <div class="main">
+        <!-- 生成交底书 -->
+        <div class="panel active" id="panel-generate">
+            <div class="gen-grid">
+                <div>
+                    <label>技术想法 *</label>
+                    <textarea id="idea" placeholder="描述你的技术方案，例如：一种基于多传感器融合与深度学习的城市排水管道智能检测机器人系统..."></textarea>
+                    <div class="hint">建议包含：核心技术方案、关键算法/结构、应用场景（至少10字）</div>
+
+                    <div style="margin-top:12px"><label>技术领域</label>
+                        <input type="text" id="techField" list="fieldList" placeholder="如：管道检测、电力系统、AI视觉、机器人...">
+                        <datalist id="fieldList">
+                            <option value="管道检测与智能运维">
+                            <option value="电力系统调度与优化">
+                            <option value="人工智能与计算机视觉">
+                            <option value="智能机器人与自动化装备">
+                            <option value="新能源发电与并网">
+                            <option value="无损检测与缺陷识别">
+                        </datalist>
+                    </div>
+
+                    <div style="margin-top:10px"><label>发明目的</label>
+                        <input type="text" id="purpose" placeholder="要解决什么问题？如：提高管道缺陷检测的准确率和实时性">
+                    </div>
+
+                    <div style="margin-top:10px"><label>核心方法/技术路线</label>
+                        <textarea id="coreMethod" style="min-height:60px" placeholder="关键技术手段，如：采用改进YOLOv8算法+SLAM定位+边缘计算..."></textarea>
+                    </div>
+
+                    <div style="margin-top:10px"><label>现有技术的问题</label>
+                        <input type="text" id="problems" placeholder="如：人工巡检效率低、漏检率高、无法实时评估">
+                    </div>
+
+                    <div style="margin-top:10px"><label>发明名称（可选）</label>
+                        <input type="text" id="title" placeholder="留空自动提取">
+                    </div>
+
+                    <button class="btn btn-primary" style="width:100%;margin-top:16px" id="genBtn" onclick="generate()">🤖 AI 生成交底书</button>
+                    <div class="error-msg" id="genError"></div>
+                    <div class="examples">
+                        <span class="chip" onclick="fillEx(0)">管道检测机器人</span>
+                        <span class="chip" onclick="fillEx(1)">虚拟电厂调度</span>
+                        <span class="chip" onclick="fillEx(2)">光伏功率预测</span>
+                        <span class="chip" onclick="fillEx(3)">配电网故障定位</span>
+                    </div>
+                </div>
+                <div>
+                    <div id="genLoading" class="loading" style="display:none"><div class="spinner"></div>AI 正在分析相关专利并撰写交底书...</div>
+                    <div id="genEmpty" class="empty-state"><div class="icon">📋</div><p>输入技术想法后点击生成</p><p style="font-size:13px;margin-top:4px">AI 基于 500+ 篇授权专利知识库撰写</p></div>
+                    <div id="genResult" style="display:none">
+                        <div class="stats-row"><span id="rMode"></span><span id="rWords"></span><span id="rSections"></span><span id="rTime"></span></div>
+                        <div class="result-box" id="rContent"></div>
+                        <div style="display:flex;gap:12px;margin-top:12px">
+                            <button class="btn btn-outline" onclick="downloadMd()">⬇️ 下载</button>
+                            <button class="btn btn-outline" onclick="copyMd()">📋 复制</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 专利搜索 -->
+        <div class="panel" id="panel-search">
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="搜索专利：关键词、专利号、申请人..." onkeydown="if(event.key==='Enter')searchPatents()">
+                <button class="btn btn-primary" onclick="searchPatents()">搜索</button>
+            </div>
+            <div class="filters">
+                <select id="filterIpc"><option value="">全部IPC分类</option></select>
+                <input type="text" id="filterApplicant" placeholder="申请人过滤" style="min-width:200px">
+            </div>
+            <div class="result-count" id="searchCount"></div>
+            <div id="searchLoading" class="loading" style="display:none"><div class="spinner"></div>搜索中...</div>
+            <div class="patent-list" id="patentList"></div>
+            <div class="pagination" id="pagination"></div>
+        </div>
+
+        <!-- 数据库概览 -->
+        <div class="panel" id="panel-stats">
+            <div id="statsLoading" class="loading"><div class="spinner"></div>加载统计数据...</div>
+            <div id="statsContent" style="display:none">
+                <div class="stats-grid" id="statsCards"></div>
+                <div class="dist-section"><h3>IPC分类分布</h3><div id="ipcBars"></div></div>
+                <div class="dist-section"><h3>Top 申请人</h3><div id="applicantBars"></div></div>
+            </div>
+        </div>
+
+        <!-- 质量审查 -->
+        <div class="panel" id="panel-quality">
+            <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+                <button class="btn btn-primary" onclick="reviewCurrent()">🔍 审查当前交底书</button>
+                <button class="btn btn-outline" onclick="runBatchTest()">🚀 批量测试(10题)</button>
+                <button class="btn btn-outline" onclick="exportReport()">⬇️ 导出报告</button>
+            </div>
+            <div id="qrLoading" class="loading" style="display:none"><div class="spinner"></div>正在审查质量...</div>
+            <div id="qrEmpty" class="empty-state"><div class="icon">📋</div><p>先在“生成交底书”页面生成内容，然后点击“审查当前交底书”</p><p style="font-size:13px;margin-top:4px">或点击“批量测试”自动运行10个多领域题目</p></div>
+            <div id="qrResult" style="display:none">
+                <div class="qr-grid">
+                    <div>
+                        <div class="score-card">
+                            <div class="big" id="qrScore">--</div>
+                            <div class="grade" id="qrGrade">--</div>
+                            <div style="font-size:12px;color:var(--text2);margin-top:8px">综合评分</div>
+                        </div>
+                        <div class="dim-list" id="qrDims" style="margin-top:16px"></div>
+                    </div>
+                    <div>
+                        <h4 style="font-size:14px;margin-bottom:8px">💡 改进建议</h4>
+                        <ul id="qrSuggestions" style="font-size:13px;padding-left:18px;line-height:2"></ul>
+                        <h4 style="font-size:14px;margin:16px 0 8px">📚 专利对比</h4>
+                        <table class="cmp-table" id="qrCompare">
+                            <thead><tr><th>专利号</th><th>相似度</th><th>重叠关键词</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div id="batchResult" style="display:none;margin-top:24px">
+                <h4 style="font-size:15px;margin-bottom:12px">📊 批量测试结果</h4>
+                <div id="batchSummary" style="font-size:13px;color:var(--text2);margin-bottom:12px"></div>
+                <table class="batch-table" id="batchTable">
+                    <thead><tr><th>#</th><th>题目</th><th>模式</th><th>字数</th><th>耗时</th><th>评分</th><th>等级</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 专利详情弹窗 -->
+    <div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+        <div class="modal">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+<script>
+// ═══ 全局 ═══
+let currentDisclosure='', currentTitle='', searchPage=1;
+let pdfDoc=null, pdfPage=1, pdfScale=1.2;
+const EXAMPLES=[
+    '一种基于多传感器融合与深度学习的城市排水管道智能检测机器人系统，采用履带式自适应行走机构，搭载高清摄像头、激光雷达和超声波传感器，通过改进的YOLOv8算法实时识别管道内壁缺陷。',
+    '一种基于深度强化学习的虚拟电厂多时间尺度协调调度方法，通过构建日前-日内-实时三层调度架构，结合多智能体强化学习算法，实现分布式资源的优化配置和实时响应。',
+    '一种基于时空图神经网络的光伏电站功率预测方法，通过构建光伏电站间的空间拓扑图和时间依赖关系，融合气象数据实现多时间尺度精准预测。',
+    '一种基于边缘计算和深度学习的配电网故障精准定位方法，利用卷积神经网络分析故障暂态信号特征，实现毫秒级故障区段定位。'
+];
+
+// ═══ Tab切换 ═══
+document.querySelectorAll('.tab').forEach(tab=>{
+    tab.addEventListener('click',()=>{
+        document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
+        if(tab.dataset.tab==='stats')loadStats();
+        if(tab.dataset.tab==='search'&&document.getElementById('filterIpc').options.length<=1)loadIpcList();
+    });
+});
+
+// ═══ 状态 ═══
+async function checkStatus(){
+    try{
+        const r=await fetch('/api/status');const d=await r.json();
+        document.getElementById('dot').className='dot'+(d.status==='ready'?' ok':'');
+        document.getElementById('statusText').textContent=d.status==='ready'?`${d.stats.patents} 篇专利 | ${d.stats.kg_nodes} 知识节点`:'初始化中...';
+    }catch(e){document.getElementById('statusText').textContent='离线';}
+}
+checkStatus();setInterval(checkStatus,30000);
+
+// ═══ 生成 ═══
+function fillEx(i){document.getElementById('idea').value=EXAMPLES[i];}
+async function generate(){
+    const idea=document.getElementById('idea').value.trim();
+    if(idea.length<10){showErr('genError','请输入至少10个字的技术想法');return;}
+    hideErr('genError');
+    document.getElementById('genBtn').disabled=true;
+    document.getElementById('genEmpty').style.display='none';
+    document.getElementById('genResult').style.display='none';
+    document.getElementById('genLoading').style.display='block';
+    try{
+        const body={
+            idea,
+            title:document.getElementById('title').value.trim(),
+            tech_field:document.getElementById('techField').value.trim(),
+            purpose:document.getElementById('purpose').value.trim(),
+            core_method:document.getElementById('coreMethod').value.trim(),
+            problems:document.getElementById('problems').value.trim(),
+        };
+        const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        const d=await r.json();
+        if(d.success){
+            currentDisclosure=d.disclosure;
+            currentTitle=document.getElementById('title').value.trim()||idea.substring(0,30);
+            document.getElementById('rMode').textContent=d.mode==='llm'?'🤖 AI生成':'📝 模板生成';
+            document.getElementById('rWords').textContent=d.stats.word_count+' 字';
+            document.getElementById('rSections').textContent=d.stats.section_count+' 章节';
+            document.getElementById('rTime').textContent=d.stats.elapsed_seconds+'s';
+            document.getElementById('rContent').innerHTML=md2html(d.disclosure);
+            document.getElementById('genResult').style.display='block';
+        }else showErr('genError',d.error);
+    }catch(e){showErr('genError','网络错误: '+e.message);}
+    finally{document.getElementById('genLoading').style.display='none';document.getElementById('genBtn').disabled=false;}
+}
+async function downloadMd(){
+    const r=await fetch('/api/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({disclosure:currentDisclosure,title:currentTitle})});
+    const blob=await r.blob();const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=currentTitle+'.md';a.click();URL.revokeObjectURL(url);
+}
+function copyMd(){navigator.clipboard.writeText(currentDisclosure).then(()=>alert('已复制'));}
+
+// ═══ 搜索 ═══
+async function loadIpcList(){
+    const r=await fetch('/api/ipc_list');const list=await r.json();
+    const sel=document.getElementById('filterIpc');
+    sel.innerHTML='<option value="">全部IPC分类</option>';
+    list.forEach(item=>{sel.innerHTML+=`<option value="${item.code}">${item.code} (${item.count})</option>`;});
+}
+async function searchPatents(page=1){
+    searchPage=page;
+    const q=document.getElementById('searchInput').value.trim();
+    const ipc=document.getElementById('filterIpc').value;
+    const applicant=document.getElementById('filterApplicant').value.trim();
+    document.getElementById('searchLoading').style.display='block';
+    document.getElementById('patentList').innerHTML='';
+    document.getElementById('pagination').innerHTML='';
+    try{
+        const params=new URLSearchParams({page,size:15});
+        if(q)params.set('q',q);if(ipc)params.set('ipc',ipc);if(applicant)params.set('applicant',applicant);
+        const r=await fetch('/api/search?'+params);const d=await r.json();
+        document.getElementById('searchCount').textContent=`共 ${d.total} 条结果（第 ${d.page}/${d.pages||1} 页）`;
+        const list=document.getElementById('patentList');
+        if(!d.results.length){list.innerHTML='<div class="empty-state"><div class="icon">🔍</div><p>未找到匹配的专利</p></div>';}
+        else{list.innerHTML=d.results.map(p=>`
+            <div class="patent-card" onclick="showDetail('${p.id}')">
+                <h3>${p.title||p.id}</h3>
+                <div class="patent-meta">
+                    <span class="tag">${p.id}</span>
+                    ${p.ipc?`<span class="tag">${p.ipc}</span>`:''}
+                    <span>${p.applicant?p.applicant.split(';')[0]:''}</span>
+                    <span>${p.application_date||''}</span>
+                    ${p.has_claims?'<span>✓权利要求</span>':''}
+                    ${p.has_pdf?'<span class="pdf-badge">PDF</span>':''}
+                </div>
+            </div>`).join('');}
+        if(d.pages>1){
+            let html=`<button ${page<=1?'disabled':''} onclick="searchPatents(${page-1})">上一页</button>`;
+            for(let i=Math.max(1,page-2);i<=Math.min(d.pages,page+2);i++)
+                html+=`<button class="${i===page?'current':''}" onclick="searchPatents(${i})">${i}</button>`;
+            html+=`<button ${page>=d.pages?'disabled':''} onclick="searchPatents(${page+1})">下一页</button>`;
+            document.getElementById('pagination').innerHTML=html;
+        }
+    }catch(e){document.getElementById('searchCount').textContent='搜索失败: '+e.message;}
+    finally{document.getElementById('searchLoading').style.display='none';}
+}
+
+// ═══ 详情 + PDF ═══
+async function showDetail(id){
+    document.getElementById('modal').classList.add('active');
+    document.getElementById('modalContent').innerHTML='<div class="loading"><div class="spinner"></div>加载中...</div>';
+    pdfDoc=null;pdfPage=1;
+    try{
+        const r=await fetch('/api/patent/'+id);const p=await r.json();
+        const pdfTab=p.has_pdf?`<button class="tab-btn" onclick="switchTab('pdf')">📄 PDF原文</button>`:'';
+        document.getElementById('modalContent').innerHTML=`
+            <h2>${p.title}</h2>
+            <div class="detail-meta">
+                <dt>专利号</dt><dd>${p.id}</dd>
+                <dt>IPC分类</dt><dd>${p.ipc||'-'}</dd>
+                <dt>申请人</dt><dd>${p.applicant||'-'}</dd>
+                <dt>申请日</dt><dd>${p.application_date||'-'}</dd>
+                <dt>法律状态</dt><dd>${p.legal_status||'-'}</dd>
+                <dt>数据完整度</dt><dd>${p.has_claims?'✓权利要求 ':''}${p.has_description?'✓说明书 ':''}${p.has_pdf?'✓PDF':''}</dd>
+            </div>
+            <div class="tab-btns" style="margin-top:16px">
+                <button class="tab-btn active" onclick="switchTab('text')">📝 文本</button>
+                ${pdfTab}
+            </div>
+            <div id="tab-text">
+                ${p.claims?`<div class="detail-section"><h4>权利要求书</h4><pre>${escHtml(p.claims)}</pre></div>`:'<p style="color:var(--text2)">暂无权利要求文本</p>'}
+                ${p.description?`<div class="detail-section"><h4>说明书</h4><pre>${escHtml(p.description)}</pre></div>`:''}
+            </div>
+            <div id="tab-pdf" style="display:none">
+                <div class="pdf-toolbar">
+                    <button onclick="pdfPrev()" id="pdfPrevBtn">← 上一页</button>
+                    <span id="pdfPageInfo">-</span>
+                    <button onclick="pdfNext()" id="pdfNextBtn">下一页 →</button>
+                    <button onclick="pdfZoom(-0.2)">−</button>
+                    <button onclick="pdfZoom(0.2)">＋</button>
+                </div>
+                <div class="pdf-container" id="pdfContainer"><canvas id="pdfCanvas"></canvas></div>
+            </div>`;
+        if(p.has_pdf)loadPdf(id);
+    }catch(e){document.getElementById('modalContent').innerHTML='<p>加载失败: '+e.message+'</p>';}
+}
+function switchTab(tab){
+    document.getElementById('tab-text').style.display=tab==='text'?'block':'none';
+    document.getElementById('tab-pdf').style.display=tab==='pdf'?'block':'none';
+    document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&tab==='text')||(i===1&&tab==='pdf')));
+}
+async function loadPdf(id){
+    try{
+        pdfDoc=await pdfjsLib.getDocument('/api/patent/'+id+'/pdf').promise;
+        renderPdfPage();
+    }catch(e){document.getElementById('pdfContainer').innerHTML='<p style="color:#fff;text-align:center;padding:40px">PDF加载失败</p>';}
+}
+async function renderPdfPage(){
+    if(!pdfDoc)return;
+    const page=await pdfDoc.getPage(pdfPage);
+    const viewport=page.getViewport({scale:pdfScale});
+    const canvas=document.getElementById('pdfCanvas');
+    const ctx=canvas.getContext('2d');
+    canvas.width=viewport.width;canvas.height=viewport.height;
+    await page.render({canvasContext:ctx,viewport}).promise;
+    document.getElementById('pdfPageInfo').textContent=`${pdfPage} / ${pdfDoc.numPages}`;
+    document.getElementById('pdfPrevBtn').disabled=pdfPage<=1;
+    document.getElementById('pdfNextBtn').disabled=pdfPage>=pdfDoc.numPages;
+}
+function pdfPrev(){if(pdfPage>1){pdfPage--;renderPdfPage();}}
+function pdfNext(){if(pdfDoc&&pdfPage<pdfDoc.numPages){pdfPage++;renderPdfPage();}}
+function pdfZoom(d){pdfScale=Math.max(0.5,Math.min(3,pdfScale+d));renderPdfPage();}
+function closeModal(){document.getElementById('modal').classList.remove('active');pdfDoc=null;}
+
+// ═══ 统计 ═══
+let statsLoaded=false;
+async function loadStats(){
+    if(statsLoaded)return;
+    try{
+        const r=await fetch('/api/stats');const d=await r.json();
+        statsLoaded=true;
+        document.getElementById('statsLoading').style.display='none';
+        document.getElementById('statsContent').style.display='block';
+        document.getElementById('statsCards').innerHTML=`
+            <div class="stat-card"><div class="num">${d.total}</div><div class="label">专利总数</div></div>
+            <div class="stat-card"><div class="num">${d.with_claims}</div><div class="label">有权利要求</div></div>
+            <div class="stat-card"><div class="num">${d.with_description}</div><div class="label">有说明书</div></div>
+            <div class="stat-card"><div class="num">${d.date_range.min}~${d.date_range.max}</div><div class="label">申请日期范围</div></div>`;
+        const maxIpc=Math.max(...d.ipc_distribution.map(x=>x.count));
+        document.getElementById('ipcBars').innerHTML=d.ipc_distribution.slice(0,12).map(x=>`
+            <div class="bar-row"><span class="bar-label">${x.code}</span><div class="bar-track"><div class="bar-fill" style="width:${x.count/maxIpc*100}%"></div></div><span class="bar-count">${x.count}</span></div>`).join('');
+        const maxApp=Math.max(...d.top_applicants.map(x=>x.count));
+        document.getElementById('applicantBars').innerHTML=d.top_applicants.slice(0,10).map(x=>`
+            <div class="bar-row"><span class="bar-label" title="${x.name}">${x.name.substring(0,12)}</span><div class="bar-track"><div class="bar-fill" style="width:${x.count/maxApp*100}%"></div></div><span class="bar-count">${x.count}</span></div>`).join('');
+    }catch(e){document.getElementById('statsLoading').innerHTML='加载失败';}
+}
+
+// ═══ 工具 ═══
+function md2html(md){
+    return md.replace(/^### (.*$)/gm,'<h3>$1</h3>').replace(/^## (.*$)/gm,'<h2>$1</h2>').replace(/^# (.*$)/gm,'<h1>$1</h1>')
+        .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/^\- (.*$)/gm,'<li>$1</li>').replace(/^\d+\. (.*$)/gm,'<li>$1</li>')
+        .replace(/^---$/gm,'<hr>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
+}
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function showErr(id,msg){const el=document.getElementById(id);el.textContent=msg;el.classList.add('show');}
+function hideErr(id){document.getElementById(id).classList.remove('show');}
+loadIpcList();
+
+// ═══ 质量审查 ═══
+let lastReport=null;
+const DIM_NAMES={structure:'结构完整',length:'篇幅充分',numbering:'编号规范',technical_depth:'技术深度',claims:'权利要求',implementation:'实施例',relevance:'领域相关',novelty:'新颖性'};
+function dimColor(s){return s>=80?'var(--success)':s>=60?'var(--primary)':s>=40?'#f59e0b':'var(--error)';}
+
+async function reviewCurrent(){
+    if(!currentDisclosure){alert('请先生成交底书');return;}
+    document.getElementById('qrLoading').style.display='block';
+    document.getElementById('qrEmpty').style.display='none';
+    document.getElementById('qrResult').style.display='none';
+    try{
+        const idea=document.getElementById('idea').value.trim()||currentDisclosure.substring(0,100);
+        const r=await fetch('/api/quality-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({disclosure:currentDisclosure,idea})});
+        const d=await r.json();
+        if(d.success){lastReport=d.report;renderReport(d.report);}
+        else alert(d.error||'审查失败');
+    }catch(e){alert('网络错误: '+e.message);}
+    finally{document.getElementById('qrLoading').style.display='none';}
+}
+
+function renderReport(rpt){
+    document.getElementById('qrResult').style.display='block';
+    document.getElementById('qrScore').textContent=rpt.total_score;
+    const gEl=document.getElementById('qrGrade');
+    gEl.textContent=rpt.grade+'级';gEl.className='grade grade-'+rpt.grade;
+    // 维度条
+    const dims=rpt.dimensions;
+    document.getElementById('qrDims').innerHTML=Object.keys(DIM_NAMES).map(k=>{
+        const d=dims[k]||{score:0,detail:''};
+        return `<div class="dim-row"><span class="dim-name">${DIM_NAMES[k]}</span><div class="dim-bar"><div class="dim-fill" style="width:${d.score}%;background:${dimColor(d.score)}"></div></div><span class="dim-score">${d.score}</span></div>`;
+    }).join('');
+    // 建议
+    document.getElementById('qrSuggestions').innerHTML=(rpt.suggestions||[]).length?rpt.suggestions.map(s=>`<li>${s}</li>`).join(''):'<li>无特别建议，质量良好</li>';
+    // 专利对比
+    const tbody=document.querySelector('#qrCompare tbody');
+    tbody.innerHTML=(rpt.patent_comparison||[]).map(c=>`<tr><td>${c.patent_id}</td><td>${(c.similarity*100).toFixed(1)}%</td><td>${(c.overlaps||[]).slice(0,4).join('、')}</td></tr>`).join('')||'<tr><td colspan="3">未找到相关专利</td></tr>';
+}
+
+async function runBatchTest(){
+    if(!confirm('批量测试将调用AI生成10篇交底书，预计耗时3-5分钟，确认继续？'))return;
+    document.getElementById('qrLoading').style.display='block';
+    document.getElementById('qrEmpty').style.display='none';
+    document.getElementById('batchResult').style.display='none';
+    try{
+        const r=await fetch('/api/batch-test',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+        const d=await r.json();
+        if(d.success){
+            document.getElementById('batchResult').style.display='block';
+            document.getElementById('batchSummary').textContent=`共${d.summary.total_topics}题 | 平均${d.summary.avg_score}分 | 最低${d.summary.min_score} | 最高${d.summary.max_score}`;
+            const tbody=document.querySelector('#batchTable tbody');
+            tbody.innerHTML=d.results.map(r=>`<tr><td>${r.index}</td><td>${r.name}</td><td>${r.mode}</td><td>${r.word_count}</td><td>${r.elapsed}s</td><td>${r.quality.total_score}</td><td><span class="grade grade-${r.quality.grade}" style="font-size:12px;padding:1px 8px">${r.quality.grade}</span></td></tr>`).join('');
+            lastReport=d;
+        }else alert(d.error||'批量测试失败');
+    }catch(e){alert('网络错误: '+e.message);}
+    finally{document.getElementById('qrLoading').style.display='none';}
+}
+
+function exportReport(){
+    if(!lastReport){alert('请先运行审查或批量测试');return;}
+    const blob=new Blob([JSON.stringify(lastReport,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download='quality_report_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+    URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>

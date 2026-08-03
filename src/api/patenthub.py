@@ -280,22 +280,27 @@ class PatenthubClient:
         base_data = self.get_basic_info(patent_id)
         patent_info = base_data.get("patent", {})
 
-        # 检查pdfList
+        # 检查pdfList，获取PDF路径（key参数）
         pdf_list = patent_info.get("pdfList", [])
         if not pdf_list:
             print(f"专利 {patent_id} 没有可用的PDF")
             return None
 
-        # 使用API下载PDF
+        # 使用第一个PDF路径作为key
+        pdf_key = pdf_list[0]
+
+        # 使用API下载PDF（key参数从pdfList获取）
         url = f"{self.BASE_URL}/api/pdf"
         params = {
             "t": self.token,
-            "id": patent_id,
-            "v": 1
+            "v": 1,
+            "key": pdf_key
         }
 
         try:
-            response = self.session.get(url, params=params, timeout=60, stream=True)
+            # PDF下载需要使用不同的Accept头，否则返回406
+            headers = {"Accept": "*/*"}
+            response = self.session.get(url, params=params, timeout=60, stream=True, headers=headers)
 
             # 检查是否是PDF文件
             content_type = response.headers.get("Content-Type", "")
