@@ -81,7 +81,7 @@ class RAGEngine:
     """
 
     # 索引结构版本号：分块逻辑/元数据变更时递增，旧索引自动作废重建
-    INDEX_SCHEMA_VERSION = 5
+    INDEX_SCHEMA_VERSION = 6
 
     def __init__(self, storage_path: str = "data/rag_index"):
         self.storage_path = Path(storage_path)
@@ -97,6 +97,10 @@ class RAGEngine:
         # 稠密向量（可选，需 embedding API；可用时与 TF-IDF 做 RRF 混合检索）
         self.embedder = EmbeddingClient()
         self.dense_vectors: Optional[np.ndarray] = None
+
+        # 专利质量分层（检索加权用）
+        self.patent_quality: Dict[str, float] = {}
+        self._chunk_quality: np.ndarray = np.array([], dtype=np.float32)
 
         # TF-IDF向量化器（使用jieba中文分词）
         self.vectorizer = TfidfVectorizer(
@@ -125,6 +129,11 @@ class RAGEngine:
         # 记录全部参与索引的专利 ID（含无文本不产生chunk的，供增量判断）
         self._input_patent_ids = [p.patent_id for p in patents]
 
+        # 专利质量分层：高质量专利检索时轻微加权，避免学到低质结构
+        self.patent_quality = {}
+        for p in patents:
+            self.patent_quality[p.patent_id] = self._patent_quality_score(p)
+
         for p in patents:
             patent_chunks = self._chunk_patent(p)
             self.chunks.extend(patent_chunks)
@@ -133,6 +142,12 @@ class RAGEngine:
                 idx = len(self.chunks) - len(patent_chunks) + i
                 self.chunks_by_type[chunk.section_type].append(idx)
                 self.chunks_by_patent[p.patent_id].append(idx)
+
+        # chunk 对齐的质量分数组（供检索加权）
+        self._chunk_quality = np.array(
+            [self.patent_quality.get(c.patent_id, 0.5) for c in self.chunks],
+            dtype=np.float32,
+        ) if self.chunks else np.array([], dtype=np.float32)
 
         # TF-IDF 向量化
         self.dense_vectors = None
@@ -310,6 +325,56 @@ class RAGEngine:
 
         return chunks
 
+    @staticmethod
+    def _patent_quality_score(patent: StructuredPatent) -> float:
+        """计算专利质量分 [0, 1]
+
+        信号：法律状态（授权/有效加分，撤回/驳回减分）、权利要求数量、
+        从属权利要求数（保护梯度）、说明书完整度、技术效果提取。
+        用于检索时轻微加权，避免 AI 学习低质专利结构。
+
+        Args:
+            patent: 结构化专利
+
+        Returns:
+            质量分
+        """
+        s = 0.5  # 基线
+
+        # 法律状态（数据不全时跳过）
+        ls = (patent.legal_status or "").strip()
+        if any(kw in ls for kw in ("授权", "有效", "维持")):
+            s += 0.2
+        elif any(kw in ls for kw in ("撤回", "驳回", "失效")):
+            s -= 0.2
+
+        # 权利要求数量与保护梯度
+        if patent.claims_tree:
+            total = patent.claims_tree.total_claims or 0
+            dep = len(patent.claims_tree.dependent_claims)
+            if total >= 20:
+                s += 0.2
+            elif total >= 10:
+                s += 0.15
+            elif total >= 5:
+                s += 0.1
+            if dep >= 10:
+                s += 0.1
+            elif dep >= 4:
+                s += 0.05
+
+        # 说明书完整度
+        if patent.description_sections:
+            ds = patent.description_sections
+            if ds.detailed_implementation or ds.invention_content:
+                s += 0.1
+
+        # 技术效果提取成功（说明解析质量好）
+        if patent.technical_effects:
+            s += 0.1
+
+        return max(0.0, min(1.0, s))
+
     # ═══════════════════════════════════════════════════════════════
     # 检索方法
     # ═══════════════════════════════════════════════════════════════
@@ -340,6 +405,10 @@ class RAGEngine:
 
         # 混合融合
         scores, hybrid_active = self._fused_scores(query, tfidf_scores)
+
+        # 质量分层加权：高质量专利轻微上浮 [0.9, 1.1]，不主导相关度
+        if self._chunk_quality.size == len(self.chunks):
+            scores = scores * (0.9 + 0.2 * self._chunk_quality)
 
         # 排序
         sorted_indices = scores.argsort()[::-1]
@@ -657,6 +726,11 @@ class RAGEngine:
         elif dense_path.exists():
             dense_path.unlink()
 
+        # 专利质量分
+        quality_path = self.storage_path / "patent_quality.json"
+        with open(quality_path, "w", encoding="utf-8") as f:
+            json.dump(self.patent_quality, f, ensure_ascii=False)
+
         # 保存已索引专利 ID 清单（供增量模式判断新旧）
         meta_path = self.storage_path / "index_meta.json"
         indexed_ids = sorted(set(getattr(self, "_input_patent_ids", None)
@@ -726,6 +800,19 @@ class RAGEngine:
                 self.dense_vectors = np.load(dense_path)
             except Exception:
                 self.dense_vectors = None
+
+        # 专利质量分
+        quality_path = self.storage_path / "patent_quality.json"
+        self.patent_quality = {}
+        if quality_path.exists():
+            try:
+                self.patent_quality = json.loads(quality_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                self.patent_quality = {}
+        self._chunk_quality = np.array(
+            [self.patent_quality.get(c.patent_id, 0.5) for c in self.chunks],
+            dtype=np.float32,
+        ) if self.chunks else np.array([], dtype=np.float32)
 
         print(f"RAG索引已加载: {filepath} ({len(self.chunks)}个文档块)")
 
