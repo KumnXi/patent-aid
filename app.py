@@ -257,6 +257,56 @@ def api_quality_review():
         return jsonify({"error": f"质量审查失败: {str(e)}"}), 500
 
 
+@app.route("/api/analyze-idea", methods=["POST"])
+def api_analyze_idea():
+    """创意评估：创新方向 + 术语建议 + 相关专利 + 图谱方案
+
+    生成交底书前调用，帮助用户评估想法的新颖性与创新方向。
+    """
+    data = request.get_json() or {}
+    idea = (data.get("idea") or "").strip()
+    if len(idea) < 10:
+        return jsonify({"error": "技术想法描述太短，请至少输入10个字"}), 400
+
+    engine = get_engine()
+    if not engine:
+        return jsonify({"error": f"引擎初始化失败: {_engine_status}"}), 500
+
+    try:
+        # 创新方向 + 术语建议
+        suggestion = engine.suggest_innovation(idea)
+
+        # 相关专利 + 图谱方案 + 效果参考（top_k=3 保持精简）
+        query_result = engine.query(idea, top_k=3)
+
+        # 权利要求结构建议（按检测到的创新类型）
+        directions = suggestion.get("innovation_directions", [])
+        claim_rec = None
+        if directions:
+            try:
+                claim_rec = engine.recommend_claim_structure(
+                    directions[0].get("innovation_type", "")
+                )
+            except Exception:
+                claim_rec = None
+
+        resp = {
+            "success": True,
+            "idea": idea,
+            "domain": suggestion.get("matched_domain", ""),
+            "innovation_directions": directions[:4],
+            "terminology_recommendations": suggestion.get("terminology_recommendations", []),
+            "related_patents": query_result.get("related_patents", [])[:6],
+            "graph_solutions": query_result.get("related_solutions", [])[:4],
+            "effect_references": query_result.get("effect_references", [])[:3],
+            "claim_structure": claim_rec,
+        }
+        return jsonify(resp)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": f"创意评估失败: {str(e)}"}), 500
+
+
 @app.route("/api/batch-test", methods=["POST"])
 def api_batch_test():
     """批量测试（10题多领域）"""
