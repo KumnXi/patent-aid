@@ -239,9 +239,9 @@ class PatentDatabaseBuilder:
             "errors": []
         }
 
-        # 构建检索式
+        # 构建检索式（限定电力领域IPC分类号H02）
         query = " OR ".join(keywords)
-        full_query = f"({query}) AND type:发明授权 AND legalStatus:有效专利"
+        full_query = f"({query}) AND ipc:H02 AND type:发明授权 AND legalStatus:有效专利"
 
         # 搜索
         result = self.client.search(full_query, page=1, page_size=50)
@@ -254,48 +254,69 @@ class PatentDatabaseBuilder:
         for patent_data in patents[:max_patents]:
             patent_id = patent_data.get("id")
 
+            # 跳过已存在的专利
+            if patent_id in db["patents"]:
+                print(f"[跳过] 已存在: {patent_id}")
+                continue
+
+            # 先保存搜索结果中的基本信息
+            patent_entry = {
+                "id": patent_id,
+                "title": patent_data.get("title"),
+                "applicant": patent_data.get("applicant"),
+                "application_date": patent_data.get("applicationDate"),
+                "ipc": patent_data.get("mainIpc"),
+                "legal_status": patent_data.get("legalStatus"),
+                "crawled_at": datetime.now().isoformat(),
+                "has_claims": False,
+                "has_description": False
+            }
+
+            # 尝试获取权利要求和说明书（可能因配额限制失败）
             try:
-                # 获取权利要求和说明书
                 claims_data = self.client.get_claims(patent_id)
-                desc_data = self.client.get_description(patent_id)
-
-                # 更新数据库
-                db["patents"][patent_id] = {
-                    "id": patent_id,
-                    "title": patent_data.get("title"),
-                    "applicant": patent_data.get("applicant"),
-                    "application_date": patent_data.get("applicationDate"),
-                    "ipc": patent_data.get("mainIpc"),
-                    "legal_status": patent_data.get("legalStatus"),
-                    "crawled_at": datetime.now().isoformat(),
-                    "has_claims": bool(claims_data.get("patent", {}).get("claims")),
-                    "has_description": bool(desc_data.get("patent", {}).get("description"))
-                }
-
-                # 更新申请人索引
-                applicant = patent_data.get("applicant", "")
-                if applicant:
-                    if applicant not in db["applicants"]:
-                        db["applicants"][applicant] = []
-                    if patent_id not in db["applicants"][applicant]:
-                        db["applicants"][applicant].append(patent_id)
-
-                # 更新关键词索引
-                for kw in keywords:
-                    if kw not in db["keywords"]:
-                        db["keywords"][kw] = []
-                    if patent_id not in db["keywords"][kw]:
-                        db["keywords"][kw].append(patent_id)
-
-                stats["new_patents"] += 1
-                print(f"[{stats['new_patents']}] 已爬取: {patent_data.get('title')}")
-
-                # 避免请求过快
-                time.sleep(0.5)
-
+                claims_text = claims_data.get("patent", {}).get("claims", "")
+                if claims_text:
+                    patent_entry["has_claims"] = True
+                    patent_entry["claims"] = claims_text
+                time.sleep(1)
             except Exception as e:
-                stats["errors"].append({"id": patent_id, "error": str(e)})
-                print(f"爬取失败 {patent_id}: {e}")
+                print(f"  权利要求获取失败: {e}")
+
+            try:
+                desc_data = self.client.get_description(patent_id)
+                desc_text = desc_data.get("patent", {}).get("description", "")
+                if desc_text:
+                    patent_entry["has_description"] = True
+                    patent_entry["description"] = desc_text
+                time.sleep(1)
+            except Exception as e:
+                print(f"  说明书获取失败: {e}")
+
+            # 无论详情是否获取成功，都保存基本信息
+            db["patents"][patent_id] = patent_entry
+
+            # 更新申请人索引
+            applicant = patent_data.get("applicant", "")
+            if applicant:
+                if applicant not in db["applicants"]:
+                    db["applicants"][applicant] = []
+                if patent_id not in db["applicants"][applicant]:
+                    db["applicants"][applicant].append(patent_id)
+
+            # 更新关键词索引
+            for kw in keywords:
+                if kw not in db["keywords"]:
+                    db["keywords"][kw] = []
+                if patent_id not in db["keywords"][kw]:
+                    db["keywords"][kw].append(patent_id)
+
+            stats["new_patents"] += 1
+            status = "[OK]" if patent_entry["has_claims"] else "[--]"
+            print(f"[{stats['new_patents']}] {status} 已爬取: {patent_data.get('title')}")
+
+            # 避免请求过快（免费账户频率限制较严格）
+            time.sleep(2)
 
         # 保存数据库
         db["metadata"]["updated"] = datetime.now().isoformat()
@@ -388,6 +409,61 @@ class PatentDatabaseBuilder:
             print(f"获取引用数据失败: {e}")
             return {}
 
+    def backfill_details(self, max_patents: int = 10) -> Dict[str, Any]:
+        """
+        补全缺失详情的专利（权利要求和说明书）
+
+        Args:
+            max_patents: 最大补全数量
+
+        Returns:
+            补全结果统计
+        """
+        db = self._load_json(self.index_file)
+        pending = [
+            pid for pid, p in db["patents"].items()
+            if not p.get("has_claims") or not p.get("has_description")
+        ]
+
+        stats = {"total": len(pending), "filled": 0, "errors": []}
+
+        for pid in pending[:max_patents]:
+            patent = db["patents"][pid]
+            updated = False
+
+            if not patent.get("has_claims"):
+                try:
+                    claims_data = self.client.get_claims(pid)
+                    claims_text = claims_data.get("patent", {}).get("claims", "")
+                    if claims_text:
+                        patent["has_claims"] = True
+                        patent["claims"] = claims_text
+                        updated = True
+                    time.sleep(2)
+                except Exception as e:
+                    stats["errors"].append({"id": pid, "error": str(e)})
+                    print(f"权利要求补全失败 {pid}: {e}")
+
+            if not patent.get("has_description"):
+                try:
+                    desc_data = self.client.get_description(pid)
+                    desc_text = desc_data.get("patent", {}).get("description", "")
+                    if desc_text:
+                        patent["has_description"] = True
+                        patent["description"] = desc_text
+                        updated = True
+                    time.sleep(2)
+                except Exception as e:
+                    stats["errors"].append({"id": pid, "error": str(e)})
+                    print(f"说明书补全失败 {pid}: {e}")
+
+            if updated:
+                stats["filled"] += 1
+                print(f"[补全] {pid}: {patent.get('title')}")
+
+        self._save_json(self.index_file, db)
+        return stats
+
     def daily_crawl_task(self):
         """
         每日定时爬取任务
@@ -414,11 +490,14 @@ class PatentDatabaseBuilder:
             "errors": []
         }
 
-        for keywords in keywords_list:
+        for i, keywords in enumerate(keywords_list):
             print(f"\n--- 搜索关键词: {keywords} ---")
             stats = self.crawl_by_keywords(keywords, max_patents=10)
             total_stats["new_patents"] += stats["new_patents"]
             total_stats["errors"].extend(stats["errors"])
+            # 关键词组之间加长间隔，避免频率限制
+            if i < len(keywords_list) - 1:
+                time.sleep(5)
 
         # 2. 从现有专利扩展相似专利
         db = self._load_json(self.index_file)
@@ -428,7 +507,7 @@ class PatentDatabaseBuilder:
         for pid in patent_ids:
             new_ids = self.expand_by_similarity(pid, max_expansions=5)
             total_stats["expanded_patents"] += len(new_ids)
-            time.sleep(1)
+            time.sleep(2)
 
         print(f"\n=== 爬取完成 ===")
         print(f"新增专利: {total_stats['new_patents']}")

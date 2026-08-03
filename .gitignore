@@ -18,16 +18,23 @@ env/
 Thumbs.db
 
 # Output
-output/*.docx
-output/*.pdf
+output/
 
-# Data (large files)
-data/raw/
+# Logs
+logs/
+
+# Data (large / regenerable files)
+data/patent_pdfs/
+data/rag_index/
+data/knowledge_graph/
+data/cnipa_raw/
+data/patent_database/index_backup_*.json
+data/patent_database/index.json
+data/patent_database/quality_report.json
+data/patent_database/quality_scores.json
 *.csv
 
 # Secrets
 .env
 *.key
-
-# Claude Code local settings
-.claude/settings.local.json
+config/api_config.json

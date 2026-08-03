@@ -1,0 +1,37 @@
+{
+  "patenthub": {
+    "token": "你的Patenthub Token",
+    "base_url": "https://www.patenthub.cn",
+    "default_scope": "cn",
+    "default_page_size": 20
+  },
+  "google_patents": {
+    "enabled": true,
+    "proxy": "http://127.0.0.1:7890",
+    "base_url": "https://patents.google.com",
+    "language": "zh",
+    "request_interval": 3,
+    "max_retries": 3,
+    "timeout": 30
+  },
+  "llm": {
+    "provider": "deepseek",
+    "base_url": "https://api.deepseek.com",
+    "model": "deepseek-v4-flash",
+    "api_key": "你的DeepSeek API Key",
+    "max_tokens": 4096,
+    "temperature": 0.7,
+    "timeout": 120,
+    "proxy": "http://127.0.0.1:7890"
+  },
+  "embedding": {
+    "provider": "dashscope",
+    "api_key": "你的DashScope API Key（阿里云百炼，可选；填写后启用混合向量检索）",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "model": "text-embedding-v3",
+    "dimensions": 1024,
+    "batch_size": 25,
+    "timeout": 60,
+    "proxy": "http://127.0.0.1:7890"
+  }
+}
