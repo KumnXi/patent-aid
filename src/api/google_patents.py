@@ -367,14 +367,15 @@ class GooglePatentsClient:
                     patent.ipc_codes.append(code)
 
     def search_patents(self, query: str, num_results: int = 20,
-                       country: str = "CN") -> list:
+                       country: str = "CN", page: int = 0) -> list:
         """
         搜索专利（使用 XHR API）
 
         Args:
-            query: 搜索关键词
+            query: 搜索关键词（支持 IPC 检索式，如 "(F16L55/26)"）
             num_results: 期望返回数量
             country: 国家代码
+            page: 页码（0 起），用于翻页取更多结果
 
         Returns:
             专利ID列表
@@ -382,7 +383,8 @@ class GooglePatentsClient:
         # 使用 Google Patents XHR API（返回 JSON）
         xhr_url = f"{self.base_url}/xhr/query"
         params = {
-            "url": f"q={query}&country={country}&type=PATENT&num={num_results}"
+            "url": f"q={query}&country={country}&type=PATENT"
+                   f"&num={num_results}&page={page}"
         }
 
         try:
