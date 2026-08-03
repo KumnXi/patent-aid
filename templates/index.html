@@ -161,7 +161,12 @@
                     </div>
 
                     <button class="btn btn-primary" style="width:100%;margin-top:16px" id="genBtn" onclick="generate()">🤖 AI 生成交底书</button>
+                    <button class="btn btn-outline" style="width:100%;margin-top:8px" id="analyzeBtn" onclick="analyzeIdea()">🔍 创意评估（创新方向 / 相关专利 / 新颖性）</button>
                     <div class="error-msg" id="genError"></div>
+                    <div id="analyzeResult" style="display:none;margin-top:12px;border:1px dashed var(--border);border-radius:8px;padding:12px">
+                        <div style="font-weight:600;margin-bottom:8px">💡 创意评估</div>
+                        <div id="analyzeContent"></div>
+                    </div>
                     <div class="examples">
                         <span class="chip" onclick="fillEx(0)">管道检测机器人</span>
                         <span class="chip" onclick="fillEx(1)">虚拟电厂调度</span>
@@ -325,6 +330,50 @@ async function generate(){
         }else showErr('genError',d.error);
     }catch(e){showErr('genError','网络错误: '+e.message);}
     finally{document.getElementById('genLoading').style.display='none';document.getElementById('genBtn').disabled=false;}
+}
+
+async function analyzeIdea(){
+    const idea=document.getElementById('idea').value.trim();
+    if(idea.length<10){showErr('genError','请先输入至少10个字的技术想法再评估');return;}
+    hideErr('genError');
+    const btn=document.getElementById('analyzeBtn');
+    btn.disabled=true;btn.textContent='⏳ 分析中...';
+    document.getElementById('analyzeResult').style.display='block';
+    document.getElementById('analyzeContent').innerHTML='<div class="loading"><div class="spinner"></div>分析创新方向与相关专利...</div>';
+    try{
+        const r=await fetch('/api/analyze-idea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idea})});
+        const d=await r.json();
+        if(!d.success&&d.error){document.getElementById('analyzeContent').innerHTML='<span style="color:#e06c75">'+d.error+'</span>';return;}
+        let html='';
+        if(d.domain)html+='<div style="margin-bottom:8px">📍 领域：<b>'+d.domain+'</b></div>';
+        if(d.innovation_directions&&d.innovation_directions.length){
+            html+='<div style="font-weight:600;margin:8px 0 4px">🎯 创新方向建议</div>';
+            d.innovation_directions.slice(0,3).forEach(x=>{
+                html+='<div style="font-size:13px;margin-bottom:6px">▸ <b>'+x.innovation_type+'</b>：'+(x.description||'').substring(0,120)+'</div>';
+            });
+        }
+        if(d.related_patents&&d.related_patents.length){
+            html+='<div style="font-weight:600;margin:8px 0 4px">📌 相关专利（查新参考）</div>';
+            d.related_patents.slice(0,5).forEach(x=>{
+                const id=typeof x==='string'?x:(x.patent_id||'');
+                const t=typeof x==='object'?x.title:'';
+                html+='<div style="font-size:13px;margin-bottom:4px">• '+id+' '+(t||'').substring(0,40)+'</div>';
+            });
+        }
+        if(d.graph_solutions&&d.graph_solutions.length){
+            html+='<div style="font-weight:600;margin:8px 0 4px">🧠 图谱：解决相似问题的方案</div>';
+            d.graph_solutions.slice(0,3).forEach(x=>{
+                html+='<div style="font-size:13px;margin-bottom:4px">• '+(x.solution_name||'').substring(0,60)+'（'+(x.source_patents||[]).slice(0,2).join(',')+'）</div>';
+            });
+        }
+        if(d.claim_structure&&d.claim_structure.description){
+            html+='<div style="font-weight:600;margin:8px 0 4px">⚖️ 权利要求结构建议</div>';
+            html+='<div style="font-size:13px">'+(d.claim_structure.description||'').substring(0,150)+'</div>';
+        }
+        if(!html)html='<div style="font-size:13px">未发现显著分析结果，可尝试更具体的想法描述。</div>';
+        document.getElementById('analyzeContent').innerHTML=html;
+    }catch(e){document.getElementById('analyzeContent').innerHTML='<span style="color:#e06c75">网络错误: '+e.message+'</span>';}
+    finally{btn.disabled=false;btn.textContent='🔍 创意评估（创新方向 / 相关专利 / 新颖性）';}
 }
 async function downloadMd(){
     const r=await fetch('/api/download',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({disclosure:currentDisclosure,title:currentTitle})});
