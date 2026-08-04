@@ -81,7 +81,7 @@ class RAGEngine:
     """
 
     # 索引结构版本号：分块逻辑/元数据变更时递增，旧索引自动作废重建
-    INDEX_SCHEMA_VERSION = 6
+    INDEX_SCHEMA_VERSION = 7
 
     def __init__(self, storage_path: str = "data/rag_index"):
         self.storage_path = Path(storage_path)
@@ -213,24 +213,24 @@ class RAGEngine:
 
         # 块2: 技术问题（背景技术 + 发明目的），无提取结果时回退到说明书背景章节
         problem_text = patent.technical_problem or (ds.background if ds else "")
-        if problem_text:
+        for idx, text in enumerate(self._split_long_text(problem_text)):
             chunks.append(DocumentChunk(
-                chunk_id=f"{patent.patent_id}_problem",
+                chunk_id=f"{patent.patent_id}_problem" + (f"_{idx}" if idx else ""),
                 patent_id=patent.patent_id,
                 section_type="background",
-                text=problem_text,
-                metadata=dict(base_meta),
+                text=text,
+                metadata={**base_meta, "position": idx},
             ))
 
         # 块3: 技术方案概述，无提取结果时回退到发明内容章节
         solution_text = patent.technical_solution or (ds.invention_content if ds else "")
-        if solution_text:
+        for idx, text in enumerate(self._split_long_text(solution_text)):
             chunks.append(DocumentChunk(
-                chunk_id=f"{patent.patent_id}_solution",
+                chunk_id=f"{patent.patent_id}_solution" + (f"_{idx}" if idx else ""),
                 patent_id=patent.patent_id,
                 section_type="solution",
-                text=solution_text,
-                metadata=dict(base_meta),
+                text=text,
+                metadata={**base_meta, "position": idx},
             ))
 
         # 块4: 权利要求——独立+从属逐条成块，带依赖链元数据；另加整篇父块
@@ -242,7 +242,7 @@ class RAGEngine:
                     chunk_id=f"{patent.patent_id}_claims_full",
                     patent_id=patent.patent_id,
                     section_type="claims",
-                    text=patent.claims_raw[:3000],
+                    text=patent.claims_raw[:2000],
                     metadata={**base_meta, "claim_scope": "full"},
                 ))
             seen_claims = set()
@@ -250,30 +250,41 @@ class RAGEngine:
                 if claim.claim_number in seen_claims:
                     continue  # 防解析重复
                 seen_claims.add(claim.claim_number)
-                chunks.append(DocumentChunk(
-                    chunk_id=f"{patent.patent_id}_claim{claim.claim_number}",
-                    patent_id=patent.patent_id,
-                    section_type="claims",
-                    text=claim.claim_text,
-                    metadata={
-                        **base_meta,
-                        "claim_number": claim.claim_number,
-                        "claim_type": claim.claim_type,
-                        "parent_number": claim.parent_number,
-                        "dependency_chain": tree.get_dependency_chain(claim.claim_number),
-                        "claim_category": claim.claim_category,
-                    },
-                ))
+                # 巨型权项（部分中国专利独权可超万字）拆分为 ≤2000 字块
+                claim_parts = self._split_long_text(claim.claim_text)
+                for sub_idx, part_text in enumerate(claim_parts):
+                    cid = f"{patent.patent_id}_claim{claim.claim_number}"
+                    if sub_idx > 0:
+                        cid = f"{cid}_{sub_idx}"
+                    chunks.append(DocumentChunk(
+                        chunk_id=cid,
+                        patent_id=patent.patent_id,
+                        section_type="claims",
+                        text=part_text,
+                        metadata={
+                            **base_meta,
+                            "claim_number": claim.claim_number,
+                            "claim_type": claim.claim_type,
+                            "parent_number": claim.parent_number,
+                            "dependency_chain": tree.get_dependency_chain(claim.claim_number),
+                            "claim_category": claim.claim_category,
+                        },
+                    ))
 
-        # 块5: 技术效果（逐条成块）
+        # 块5: 技术效果（逐条成块，超长拆分）
         effects = patent.technical_effects or (ds.beneficial_effects if ds else [])
         for i, effect in enumerate(effects[:5]):
-            if len(effect) > 10:
+            for sub_idx, part_text in enumerate(self._split_long_text(effect)):
+                if len(part_text) <= 10:
+                    continue
+                cid = f"{patent.patent_id}_effect{i}"
+                if sub_idx > 0:
+                    cid = f"{cid}_{sub_idx}"
                 chunks.append(DocumentChunk(
-                    chunk_id=f"{patent.patent_id}_effect{i}",
+                    chunk_id=cid,
                     patent_id=patent.patent_id,
                     section_type="effects",
-                    text=effect,
+                    text=part_text,
                     metadata={**base_meta, "effect_index": i},
                 ))
 
@@ -283,14 +294,16 @@ class RAGEngine:
                 # 同一实施例编号可能出现多次（正文各处引用），用出现序号保证 chunk_id 唯一
                 emb_occurrence = defaultdict(int)
                 for emb in ds.embodiments:
-                    content = (emb.get("content") or "").strip()
-                    if len(content) > 50:
-                        emb_idx = emb.get("index")
-                        emb_occurrence[emb_idx] += 1
-                        occurrence = emb_occurrence[emb_idx]
+                    emb_idx = emb.get("index")
+                    emb_occurrence[emb_idx] += 1
+                    occurrence = emb_occurrence[emb_idx]
+                    for sub_idx, content in enumerate(
+                            self._split_long_text(emb.get("content") or "")):
                         cid = f"{patent.patent_id}_emb{emb_idx}"
                         if occurrence > 1:
                             cid = f"{patent.patent_id}_emb{emb_idx}_{occurrence}"
+                        if sub_idx > 0:
+                            cid = f"{cid}_{sub_idx}"
                         chunks.append(DocumentChunk(
                             chunk_id=cid,
                             patent_id=patent.patent_id,
@@ -313,17 +326,45 @@ class RAGEngine:
                 if current:
                     blocks.append("".join(current))
                 for idx, block in enumerate(blocks[:30]):
-                    block = block.strip()
-                    if len(block) > 50:
+                    for sub_idx, part_text in enumerate(self._split_long_text(block)):
+                        part_text = part_text.strip()
+                        if len(part_text) <= 50:
+                            continue
+                        cid = f"{patent.patent_id}_impl{idx}"
+                        if sub_idx > 0:
+                            cid = f"{cid}_{sub_idx}"
                         chunks.append(DocumentChunk(
-                            chunk_id=f"{patent.patent_id}_impl{idx}",
+                            chunk_id=cid,
                             patent_id=patent.patent_id,
                             section_type="implementation",
-                            text=block,
+                            text=part_text,
                             metadata={**base_meta, "position": idx},
                         ))
 
         return chunks
+
+    @staticmethod
+    def _split_long_text(text: str, max_len: int = 2000) -> List[str]:
+        """将过长文本拆分为 ≤max_len 的块（中文约1字≈1token，2000字远低于模型8192上限）
+
+        Args:
+            text: 输入文本
+            max_len: 每块最大字符数
+
+        Returns:
+            拆分后的文本列表
+        """
+        text = (text or "").strip()
+        if not text:
+            return []
+        if len(text) <= max_len:
+            return [text]
+        parts = []
+        for i in range(0, len(text), max_len):
+            part = text[i:i + max_len].strip()
+            if part:
+                parts.append(part)
+        return parts
 
     @staticmethod
     def _patent_quality_score(patent: StructuredPatent) -> float:

@@ -57,14 +57,54 @@ def load_db():
         return json.load(f)
 
 
-def discover(google, pages_per_ipc=PAGES_PER_IPC):
-    """按 IPC 分页检索，返回 领域->专利ID 清单"""
+def discover(google, db, pages_per_ipc=PAGES_PER_IPC):
+    """按 IPC 分页检索，返回 领域->专利ID 清单
+
+    每个 IPC 结束时增量保存到 target_patents.json，中断不丢数据。
+    """
+    # 从已有增量文件恢复进度
+    existing = set(db["patents"].keys())
     found = {}  # ipc -> [ids]
     all_ids = set()
+    if TARGET_PATH.exists():
+        try:
+            old = json.loads(TARGET_PATH.read_text(encoding="utf-8"))
+            found = old.get("by_ipc", {})
+            all_ids.update(old.get("new_to_crawl", []))
+            all_ids.update(old.get("missing_full_text", []))
+            print(f"  恢复进度: {len(found)} 个IPC已发现")
+        except (json.JSONDecodeError, FileNotFoundError):
+            pass
+
+    def save():
+        TARGET_PATH.parent.mkdir(exist_ok=True)
+        new_ids = sorted(all_ids - existing)
+        missing_full = sorted(
+            pid for pid in (all_ids & existing)
+            if not db["patents"].get(pid, {}).get("has_claims")
+        )
+        target = {
+            "generated_at": datetime.now().isoformat(),
+            "total_discovered": len(all_ids),
+            "new_to_crawl": new_ids,
+            "missing_full_text": missing_full,
+            "by_ipc": {k: v for k, v in found.items()},
+            "domain_ipcs": DOMAIN_IPCS,
+        }
+        TARGET_PATH.write_text(
+            json.dumps(target, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
 
     for group, ipcs in DOMAIN_IPCS.items():
         print(f"\n=== {group} ({len(ipcs)} 个IPC) ===")
         for ipc in ipcs:
+            # 已发现过的 IPC 跳过（增量恢复）
+            if ipc in found:
+                unique = found[ipc]
+                all_ids.update(unique)
+                print(f"  {ipc}: {len(unique)} 篇 [已缓存]")
+                continue
+
             ids = []
             for page in range(pages_per_ipc):
                 try:
@@ -82,6 +122,7 @@ def discover(google, pages_per_ipc=PAGES_PER_IPC):
             found[ipc] = unique
             all_ids.update(unique)
             print(f"  {ipc}: 发现 {len(unique)} 篇")
+            save()  # 增量保存
 
     return found, all_ids
 
@@ -99,14 +140,14 @@ def main():
     existing = set(db["patents"].keys())
     print(f"本地数据库: {len(existing)} 篇")
 
-    found, all_ids = discover(google)
+    found, all_ids = discover(google, db)
 
     # 汇总
     new_ids = sorted(all_ids - existing)
     existing_ids = sorted(all_ids & existing)
     missing_full = sorted(
         pid for pid in existing_ids
-        if not db["patents"][pid].get("has_claims")
+        if not db["patents"].get(pid, {}).get("has_claims")
     )
 
     print(f"\n{'='*50}")
@@ -116,22 +157,7 @@ def main():
     print(f"  新增可抓取:   {len(new_ids)} 篇")
     print(f"  在库但缺全文: {len(missing_full)} 篇")
     print(f"{'='*50}")
-
-    # 保存目标清单
-    target = {
-        "generated_at": datetime.now().isoformat(),
-        "total_discovered": len(all_ids),
-        "new_to_crawl": new_ids,
-        "missing_full_text": missing_full,
-        "by_ipc": {k: v for k, v in found.items()},
-        "domain_ipcs": DOMAIN_IPCS,
-    }
-    TARGET_PATH.write_text(
-        json.dumps(target, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
     print(f"\n目标清单已保存: {TARGET_PATH}")
-    print(f"  - 新增 {len(new_ids)} 篇待抓取")
-    print(f"  - 在库缺全文 {len(missing_full)} 篇待补")
     print(f"\n下一步: 用 fast_crawl.py 抓取这些专利全文")
     print(f"  D:/Anaconda3/envs/mathmodel/python.exe scripts/fast_crawl.py")
 

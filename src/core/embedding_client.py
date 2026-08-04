@@ -65,8 +65,13 @@ class EmbeddingClient:
         if not texts:
             return []
 
+        # 输入截断兜底：单条超长文本会导致整批 400，截断到安全长度
+        max_chars = int(self.config.get("embedding", {}).get("max_input_chars", 8000))
+        texts = [t[:max_chars] for t in texts]
+
         results: List[Optional[List[float]]] = [None] * len(texts)
         proxies = self._get_proxies()
+        total_batches = (len(texts) + self.batch_size - 1) // self.batch_size
 
         for start in range(0, len(texts), self.batch_size):
             batch = texts[start:start + self.batch_size]
@@ -75,6 +80,9 @@ class EmbeddingClient:
             if vectors is not None:
                 for idx, vec in zip(batch_idx, vectors):
                     results[idx] = vec
+            done = start // self.batch_size + 1
+            if done % 20 == 0 or done == total_batches:
+                print(f"  [embedding] {done}/{total_batches} 批", flush=True)
 
         failed = [i for i, r in enumerate(results) if r is None]
         if failed:
