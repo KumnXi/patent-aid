@@ -10,6 +10,7 @@
 
 import re
 import json
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 
@@ -18,7 +19,7 @@ from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-PROJECT_ROOT = __import__("pathlib").Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 # 质检迭代阈值
 QUALITY_THRESHOLD = 70

@@ -519,7 +519,10 @@ async function loadStats(){
 
 // ═══ 工具 ═══
 function md2html(md){
-    return md.replace(/^### (.*$)/gm,'<h3>$1</h3>').replace(/^## (.*$)/gm,'<h2>$1</h2>').replace(/^# (.*$)/gm,'<h1>$1</h1>')
+    // 先转义所有HTML特殊字符（防XSS），再做Markdown变换
+    const safe = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return safe
+        .replace(/^### (.*$)/gm,'<h3>$1</h3>').replace(/^## (.*$)/gm,'<h2>$1</h2>').replace(/^# (.*$)/gm,'<h1>$1</h1>')
         .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/^\- (.*$)/gm,'<li>$1</li>').replace(/^\d+\. (.*$)/gm,'<li>$1</li>')
         .replace(/^---$/gm,'<hr>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
 }

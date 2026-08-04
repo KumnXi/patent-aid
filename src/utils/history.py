@@ -5,6 +5,9 @@
 - {id}.json 元信息（想法、模式、质检报告、时间）
 
 提供列表/详情/删除接口供 app.py 调用。
+
+安全：get_history/delete_history 使用 _is_safe_id() 严格校验 record_id，
+      拒绝路径穿越字符（\\ / ..），并验证解析后文件仍在 HISTORY_DIR 内。
 """
 
 import json
@@ -23,8 +26,27 @@ def _ensure_dir():
 
 def _safe_title(title: str) -> str:
     """生成文件名安全的标题片段"""
-    safe = re.sub(r"[^\w\u4e00-\u9fff\-. ]", "", title or "交底书")
+    safe = re.sub(r"[^\w一-鿿\-. ]", "", title or "交底书")
     return safe.strip()[:30] or "交底书"
+
+
+def _is_safe_id(record_id: str) -> bool:
+    """检查 record_id 是否合法且无路径穿越
+
+    合法格式：YYYYMMDD_HHMMSS_{标题}（字母/数字/中文/下划线/连字符/点/空格）。
+    拒绝反斜杠、正斜杠、.. 等路径穿越字符，并验证解析后文件仍在 HISTORY_DIR 内。
+    """
+    if not re.match(r"^[\d]{8}_[\d]{6}_[\w一-鿿\-. ]+$", record_id):
+        return False
+    # 拒绝任何路径分隔符
+    if "\\" in record_id or "/" in record_id or ".." in record_id:
+        return False
+    # 解析后确认文件落在 HISTORY_DIR 内，防止符号链接等绕过
+    for suffix in [".md", ".json"]:
+        resolved = (HISTORY_DIR / f"{record_id}{suffix}").resolve()
+        if not str(resolved).startswith(str(HISTORY_DIR.resolve())):
+            return False
+    return True
 
 
 def save_disclosure(idea: str, disclosure: str, mode: str,
@@ -88,8 +110,7 @@ def list_history(limit: int = 50) -> List[Dict]:
 def get_history(record_id: str) -> Optional[Dict]:
     """获取单条历史记录详情（含全文）"""
     _ensure_dir()
-    # 防止路径穿越
-    if not re.match(r"^[\w\u4e00-\u9fff\-. ]+$", record_id):
+    if not _is_safe_id(record_id):
         return None
     md_path = HISTORY_DIR / f"{record_id}.md"
     meta_path = HISTORY_DIR / f"{record_id}.json"
@@ -106,7 +127,7 @@ def get_history(record_id: str) -> Optional[Dict]:
 def delete_history(record_id: str) -> bool:
     """删除一条历史记录"""
     _ensure_dir()
-    if not re.match(r"^[\w\u4e00-\u9fff\-. ]+$", record_id):
+    if not _is_safe_id(record_id):
         return False
     deleted = False
     for suffix in [".md", ".json"]:

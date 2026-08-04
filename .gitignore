@@ -34,6 +34,9 @@ data/patent_database/quality_report.json
 data/patent_database/quality_scores.json
 *.csv
 
+# Generated content (may contain sensitive IP)
+data/disclosure_history/
+
 # Secrets
 .env
 *.key

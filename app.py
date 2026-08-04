@@ -12,7 +12,7 @@
 
 import sys
 import json
-import traceback
+import logging
 from pathlib import Path
 from datetime import datetime
 
@@ -58,8 +58,8 @@ def get_engine():
         _engine_status = "就绪"
         return _engine
     except Exception as e:
-        _engine_status = f"初始化失败: {e}"
-        traceback.print_exc()
+        _engine_status = "初始化失败"
+        logging.getLogger("patent_assistant").error(f"引擎初始化异常: {e}", exc_info=True)
         return None
 
 
@@ -133,7 +133,7 @@ def api_generate():
 
     engine = get_engine()
     if not engine:
-        return jsonify({"error": f"引擎初始化失败: {_engine_status}"}), 500
+        return jsonify({"error": "引擎初始化失败，请稍后重试"}), 500
 
     try:
         start_time = datetime.now()
@@ -175,8 +175,8 @@ def api_generate():
             }
         return jsonify(resp)
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": f"生成失败: {str(e)}"}), 500
+        logging.getLogger("patent_assistant").error("API异常", exc_info=True)
+        return jsonify({"error": "生成失败，请稍后重试"}), 500
 
 
 @app.route("/api/download", methods=["POST"])
@@ -247,14 +247,14 @@ def api_quality_review():
 
     engine = get_engine()
     if not engine:
-        return jsonify({"error": f"引擎初始化失败: {_engine_status}"}), 500
+        return jsonify({"error": "引擎初始化失败，请稍后重试"}), 500
 
     try:
         report = engine.review_quality(disclosure, idea)
         return jsonify({"success": True, "report": report})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": f"质量审查失败: {str(e)}"}), 500
+        logging.getLogger("patent_assistant").error("API异常", exc_info=True)
+        return jsonify({"error": "质量审查失败，请稍后重试"}), 500
 
 
 @app.route("/api/analyze-idea", methods=["POST"])
@@ -270,7 +270,7 @@ def api_analyze_idea():
 
     engine = get_engine()
     if not engine:
-        return jsonify({"error": f"引擎初始化失败: {_engine_status}"}), 500
+        return jsonify({"error": "引擎初始化失败，请稍后重试"}), 500
 
     try:
         # 创新方向 + 术语建议
@@ -303,8 +303,8 @@ def api_analyze_idea():
         }
         return jsonify(resp)
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": f"创意评估失败: {str(e)}"}), 500
+        logging.getLogger("patent_assistant").error("API异常", exc_info=True)
+        return jsonify({"error": "创意评估失败，请稍后重试"}), 500
 
 
 @app.route("/api/batch-test", methods=["POST"])
@@ -314,7 +314,7 @@ def api_batch_test():
 
     engine = get_engine()
     if not engine:
-        return jsonify({"error": f"引擎初始化失败: {_engine_status}"}), 500
+        return jsonify({"error": "引擎初始化失败，请稍后重试"}), 500
 
     data = request.get_json() or {}
     topics = data.get("topics", TEST_TOPICS)
@@ -335,8 +335,8 @@ def api_batch_test():
         }
         return jsonify({"success": True, "results": results, "summary": summary})
     except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": f"批量测试失败: {str(e)}"}), 500
+        logging.getLogger("patent_assistant").error("API异常", exc_info=True)
+        return jsonify({"error": "批量测试失败，请稍后重试"}), 500
 
 
 # ═══════════════════════════════════════════════════════════
@@ -456,19 +456,30 @@ def _clean_text(text):
     return text
 
 
+def _safe_patent_id(patent_id):
+    """校验专利号格式（CN + 数字 + 字母），防路径穿越"""
+    if not patent_id or not re.match(r'^[A-Z]{2}\d{6,9}[A-Z]?$', patent_id):
+        return False
+    return "\\" not in patent_id and "/" not in patent_id and ".." not in patent_id
+
+
 def _has_pdf(patent_id):
     """检查专利是否有PDF文件"""
-    return (PDF_DIR / f"{patent_id}.pdf").exists()
+    if not _safe_patent_id(patent_id):
+        return False
+    p = (PDF_DIR / f"{patent_id}.pdf").resolve()
+    return p.exists() and str(p).startswith(str(PDF_DIR.resolve()))
 
 
 @app.route("/api/patent/<patent_id>")
 def api_patent_detail(patent_id):
     """获取专利详情"""
+    if not _safe_patent_id(patent_id):
+        return jsonify({"error": "无效的专利号"}), 400
     db = get_patent_db()
     p = db["patents"].get(patent_id)
-    
     if not p:
-        return jsonify({"error": f"未找到专利 {patent_id}"}), 404
+        return jsonify({"error": "未找到该专利"}), 404
     
     return jsonify({
         "id": p.get("id", patent_id),
@@ -489,7 +500,11 @@ def api_patent_detail(patent_id):
 @app.route("/api/patent/<patent_id>/pdf")
 def api_patent_pdf(patent_id):
     """提供专利PDF文件（供PDF.js渲染）"""
-    pdf_path = PDF_DIR / f"{patent_id}.pdf"
+    if not _safe_patent_id(patent_id):
+        return jsonify({"error": "无效的专利号"}), 400
+    pdf_path = (PDF_DIR / f"{patent_id}.pdf").resolve()
+    if not str(pdf_path).startswith(str(PDF_DIR.resolve())):
+        return jsonify({"error": "禁止访问"}), 403
     if not pdf_path.exists():
         return jsonify({"error": "该专利暂无PDF文件"}), 404
     return send_file(str(pdf_path), mimetype="application/pdf")

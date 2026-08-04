@@ -6,6 +6,7 @@
     logger.info("消息")
 
 日志同时输出到控制台和 logs/app.log（按大小轮转）。
+安全：文件 handler 限制 INFO 级别，避免调试信息泄露到日志文件。
 """
 
 import logging
@@ -37,11 +38,11 @@ def _init_root():
 
     formatter = logging.Formatter(_FORMAT, datefmt=_DATEFMT)
 
-    # 文件 handler：DEBUG 级，5MB 轮转，保留 3 份
+    # 文件 handler：INFO 级（避免记录调试敏感数据），5MB 轮转，保留 3 份
     file_handler = RotatingFileHandler(
         LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
     )
-    file_handler.setLevel(logging.DEBUG)
+    file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(formatter)
     root.addHandler(file_handler)
 
@@ -62,6 +63,5 @@ def get_logger(name: str) -> logging.Logger:
         logging.Logger 实例
     """
     _init_root()
-    # 去掉模块路径前缀，保持日志简洁
     short = name.split(".")[-1] if "." in name else name
     return logging.getLogger(f"patent_assistant.{short}")
