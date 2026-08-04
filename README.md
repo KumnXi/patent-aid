@@ -17,78 +17,128 @@
 | 权利要求分析 | 结构模式学习、保护范围策略、依赖深度统计 |
 | Web 应用 | Flask + 单页前端，生成/审查/搜索/历史管理 |
 
-## 环境搭建
+## 环境搭建（小白版 · 每一步都有说明）
 
-### 1. 克隆项目
+> 本教程面向零编程经验的用户，全程复制粘贴命令即可。
+
+### 1. 安装 Anaconda（如果已有可跳过）
+
+Anaconda 是一个傻瓜式的 Python 环境管理器，不需要手动配置任何东西。
+
+1. 打开 [Anaconda 官网](https://www.anaconda.com/download) → 下载 **Windows 64位** 安装包
+2. 双击安装，一路点 **Next**（全部默认选项即可）
+3. 安装完成后，按 `Win 键` → 输入 `Anaconda Prompt` → 打开这个黑窗口
+
+> 之后的命令全部在 **Anaconda Prompt** 里输入。
+
+### 2. 克隆项目
 
 ```bash
 git clone https://github.com/KumnXi/patent-aid.git
 cd patent-aid
 ```
 
-### 2. 创建虚拟环境并安装依赖
+> 如果提示 `git 不是内部命令`，去 [git-scm.com](https://git-scm.com/download/win) 安装 Git，一路 Next 就行。
+
+### 3. 用 Anaconda 创建虚拟环境
+
+虚拟环境 = 给这个项目划一个独立的 Python 空间，不会影响你电脑上其他东西。
 
 ```bash
-# 创建虚拟环境（推荐 Python 3.10+）
-python -m venv venv
-# Windows
-venv\Scripts\activate
-# macOS / Linux
-source venv/bin/activate
+conda create -n patent python=3.10 -y
+conda activate patent
+```
 
-# 安装依赖
+执行完后你的命令行前面会出现 `(patent)`，说明环境切换成功。
+
+### 4. 安装依赖
+
+```bash
 pip install -r requirements.txt
 ```
 
-9 个依赖，无 GPU 要求，3 分钟内装完。
+等待 2-3 分钟，出现 `Successfully installed` 就完成了。
 
-### 3. 配置 API Key
+### 5. 配置 API Key
 
-```bash
-# 复制配置模板
-cp config/api_config.example.json config/api_config.json
-```
+DeepSeek 是生成交底书的 AI 引擎，需要一个密钥才能调用。
 
-编辑 `config/api_config.json`，至少填入 `llm.api_key`（DeepSeek）：
+**① 获取 Key**：打开 [platform.deepseek.com](https://platform.deepseek.com) → 注册（手机号就行）→ 左侧点 **API Keys** → **创建新的 API Key** → 复制那一串 `sk-` 开头的东西。
 
-| 字段 | 必须？ | 说明 |
-|------|--------|------|
-| `llm.api_key` | ✅ 必须 | [DeepSeek API Key](https://platform.deepseek.com)，生成交底书用 |
-| `embedding.api_key` | 可选 | [硅基流动](https://siliconflow.cn)，填了启用混合语义检索 |
-| `patenthub.token` | 可选 | [Patenthub](https://patenthub.cn)，专利搜索数据源 |
-| `google_patents.proxy` | 可选 | 爬虫代理地址，国内访问 Google Patents 需要 |
-
-> ⚠️ `api_config.json` 已在 `.gitignore` 中，**不会被提交到仓库**。
-
-### 4. 准备专利数据库（可选）
-
-项目空库也能跑（降级为模板模式），但有专利库生成质量大幅提升。获取方式：
+**② 写入配置**：
 
 ```bash
-# 方式 A：IPC 领域发现 + 并发爬取（需代理访问 Google Patents）
-python scripts/ipc_discovery.py 3
-python scripts/fast_crawl.py
-
-# 方式 B：从 CNIPA 官方下载（免费，但 FTP 较慢）
-# 注册 ipdps.cnipa.gov.cn → 下载 XML → 用 scripts/ 解析入库
+copy config\api_config.example.json config\api_config.json
 ```
 
-如果跳过这一步，引擎会用纯模板模式生成交底书，质量较低但可运行。
+用记事本打开刚刚生成的 `config\api_config.json`，找到这一行：
 
-### 5. 启动
+```json
+"api_key": "你的DeepSeek API Key",
+```
+
+把 `你的DeepSeek API Key` 替换成你刚才复制的 `sk-...`，保存。
+
+> ⚠️ 这个文件含你的密钥，**千万**不要上传到任何地方。
+
+### 6. 启动
 
 ```bash
 python app.py
-# 浏览器打开 http://localhost:5000
 ```
 
-首次启动需初始化引擎（约 60 秒），后续增量加载秒级。
+打开浏览器访问 **http://localhost:5000**，看到页面就成功了。
 
-### 常用命令
+首次启动会有约一分钟的初始化过程（终端有进度显示），这是正常现象。
+
+---
+
+## 代理配置（Clash · 爬虫和部分功能需要）
+
+国内直接访问 Google Patents 会被墙，所以爬取专利数据需要**代理**。
+
+### 什么是 Clash？
+
+Clash 是一款代理软件，让你能访问被墙的网站。网上常见的机场/订阅地址都能导入。
+
+### 安装和配置
+
+1. 找一个可用的 Clash 客户端（如 Clash Verge、Clash for Windows）
+2. 导入你的订阅地址（机场提供的 `clash://` 开头的链接）
+3. 开启**系统代理**，确保右下角图标变绿
+
+### 验证代理是否生效
+
+打开浏览器访问 [Google Patents](https://patents.google.com)，能打开就说明代理通了。
+
+### 不需要代理的情况
+
+- **Web 应用**（`python app.py`）——生成交底书、搜索本地库、质检都不需要代理
+- 只有以下功能需要：爬取新专利（`fast_crawl.py`）、IPC 领域发现（`ipc_discovery.py`）
+- 如果你不需要爬取新专利数据，**完全可以不用代理**，项目能正常运行
+
+---
+
+## 爬取专利数据（可选）
+
+代理生效后，以下命令可以扩充你的专利库：
 
 ```bash
-python scripts/batch_quality_test.py   # 批量质量测试（10题，约30分钟）
-python scripts/run_tests.py            # 全链路自动化测试（22项）
+# 发现新专利（按 IPC 分类号检索，生成待爬清单）
+python scripts/ipc_discovery.py 3
+
+# 并发爬取全文
+python scripts/fast_crawl.py
+```
+
+如果爬一会儿报一堆 503 错误，说明 Clash 当前节点的 IP 被 Google 封了——在 Clash 里换个节点就行。
+
+---
+
+## 常用命令
+
+```bash
+python scripts/batch_quality_test.py   # 批量质量测试（10题）
 ```
 
 更多脚本见 [scripts/README.md](scripts/README.md)。
