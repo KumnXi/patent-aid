@@ -17,52 +17,89 @@
 | 权利要求分析 | 结构模式学习、保护范围策略、依赖深度统计 |
 | Web 应用 | Flask + 单页前端，生成/审查/搜索/历史管理 |
 
-## 快速开始
+## 环境搭建
 
-### 环境要求
-
-- Python 3.10+（项目使用 `D:/Anaconda3/envs/mathmodel/python.exe`）
-- 依赖：`requests`, `beautifulsoup4`, `lxml`, `networkx`, `scikit-learn`, `numpy`, `scipy`, `jieba`, `flask`
-- LLM：DeepSeek API Key（`config/api_config.json` 中配置，没有 Key 时生成降级为模板模式）
-- 代理：Clash（仅爬取/LLM 需要，默认端口 `7890`）
-
-### 启动 Web 应用
+### 1. 克隆项目
 
 ```bash
-cd "d:\Jupyter code\专利撰写助手"
-D:/Anaconda3/envs/mathmodel/python.exe app.py
-# 浏览器访问 http://localhost:5000
+git clone https://github.com/KumnXi/patent-aid.git
+cd patent-aid
 ```
 
-首次启动需初始化引擎（解析专利 + 建图谱，约 40-60 秒；RAG 索引未变化时自动增量加载）。
+### 2. 创建虚拟环境并安装依赖
 
-页面功能：生成交底书、质量审查、批量测试（10题）、专利搜索、生成历史、下载 Markdown。
+```bash
+# 创建虚拟环境（推荐 Python 3.10+）
+python -m venv venv
+# Windows
+venv\Scripts\activate
+# macOS / Linux
+source venv/bin/activate
+
+# 安装依赖
+pip install -r requirements.txt
+```
+
+9 个依赖，无 GPU 要求，3 分钟内装完。
+
+### 3. 配置 API Key
+
+```bash
+# 复制配置模板
+cp config/api_config.example.json config/api_config.json
+```
+
+编辑 `config/api_config.json`，至少填入 `llm.api_key`（DeepSeek）：
+
+| 字段 | 必须？ | 说明 |
+|------|--------|------|
+| `llm.api_key` | ✅ 必须 | [DeepSeek API Key](https://platform.deepseek.com)，生成交底书用 |
+| `embedding.api_key` | 可选 | [硅基流动](https://siliconflow.cn)，填了启用混合语义检索 |
+| `patenthub.token` | 可选 | [Patenthub](https://patenthub.cn)，专利搜索数据源 |
+| `google_patents.proxy` | 可选 | 爬虫代理地址，国内访问 Google Patents 需要 |
+
+> ⚠️ `api_config.json` 已在 `.gitignore` 中，**不会被提交到仓库**。
+
+### 4. 准备专利数据库（可选）
+
+项目空库也能跑（降级为模板模式），但有专利库生成质量大幅提升。获取方式：
+
+```bash
+# 方式 A：IPC 领域发现 + 并发爬取（需代理访问 Google Patents）
+python scripts/ipc_discovery.py 3
+python scripts/fast_crawl.py
+
+# 方式 B：从 CNIPA 官方下载（免费，但 FTP 较慢）
+# 注册 ipdps.cnipa.gov.cn → 下载 XML → 用 scripts/ 解析入库
+```
+
+如果跳过这一步，引擎会用纯模板模式生成交底书，质量较低但可运行。
+
+### 5. 启动
+
+```bash
+python app.py
+# 浏览器打开 http://localhost:5000
+```
+
+首次启动需初始化引擎（约 60 秒），后续增量加载秒级。
 
 ### 常用命令
 
 ```bash
-# 爬取新专利（需 Clash 代理）
-D:/Anaconda3/envs/mathmodel/python.exe scripts/slow_crawl.py
-
-# 数据库治理（规范化/去重/质量报告，爬取后建议运行）
-D:/Anaconda3/envs/mathmodel/python.exe scripts/db_maintain.py
-
-# 全链路自动化测试（22项，含3领域真实LLM生成，约15分钟）
-D:/Anaconda3/envs/mathmodel/python.exe scripts/run_tests.py
-
-# 批量质量测试（10题命令行版）
-D:/Anaconda3/envs/mathmodel/python.exe scripts/batch_quality_test.py
+python scripts/batch_quality_test.py   # 批量质量测试（10题，约30分钟）
+python scripts/run_tests.py            # 全链路自动化测试（22项）
 ```
 
-更多脚本说明见 [scripts/README.md](scripts/README.md)。
+更多脚本见 [scripts/README.md](scripts/README.md)。
 
-### 代码调用引擎
+### 代码调用
 
 ```python
 from src.core import PatentInnovationEngine
 
 engine = PatentInnovationEngine()
-engine.initialize()   # RAG索引未变化时自动增量加载
+engine.initialize()
 
 # 生成技术交底书（三阶段 + 自动质检迭代）
 result = engine.generate_disclosure(
