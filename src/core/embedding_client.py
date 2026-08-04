@@ -39,7 +39,7 @@ class EmbeddingClient:
             "base_url", "https://dashscope.aliyuncs.com/compatible-mode/v1"
         ).rstrip("/")
         self.model: str = emb.get("model", "text-embedding-v3")
-        self.dimensions: int = int(emb.get("dimensions", 1024))
+        self.dimensions: int = int(emb.get("dimensions", 0) or 0)
         self.batch_size: int = int(emb.get("batch_size", 25))
         self.timeout: int = int(emb.get("timeout", 60))
         self.proxy: str = emb.get("proxy", "")
@@ -89,12 +89,14 @@ class EmbeddingClient:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
+        # dimensions 仅对 OpenAI text-embedding-3 系列有效；
+        # bge-m3 等开源模型固定 1024 维，传了会报参数无效
         payload = {
             "model": self.model,
             "input": texts,
-            "dimensions": self.dimensions,
-            "encoding_format": "float",
         }
+        if self.dimensions > 0:
+            payload["dimensions"] = self.dimensions
 
         for attempt in range(3):
             try:
