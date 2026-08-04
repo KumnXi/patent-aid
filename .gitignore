@@ -37,6 +37,9 @@ data/patent_database/quality_scores.json
 # Generated content (may contain sensitive IP)
 data/disclosure_history/
 
+# Claude Code personal settings
+.claude/settings.local.json
+
 # Secrets
 .env
 *.key
