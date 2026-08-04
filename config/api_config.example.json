@@ -25,11 +25,10 @@
     "proxy": "http://127.0.0.1:7890"
   },
   "embedding": {
-    "provider": "dashscope",
-    "api_key": "你的DashScope API Key（阿里云百炼，可选；填写后启用混合向量检索）",
-    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    "model": "text-embedding-v3",
-    "dimensions": 1024,
+    "provider": "siliconflow",
+    "api_key": "你的SiliconFlow API Key（硅基流动，可选；填写后启用混合向量检索）",
+    "base_url": "https://api.siliconflow.cn/v1",
+    "model": "BAAI/bge-m3",
     "batch_size": 25,
     "timeout": 60,
     "proxy": "http://127.0.0.1:7890"

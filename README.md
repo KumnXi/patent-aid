@@ -193,20 +193,20 @@ engine.review_quality(disclosure, idea)    # 独立质量审查
     "proxy": "http://127.0.0.1:7890"
   },
   "embedding": {
-    "provider": "dashscope",
-    "api_key": "你的DashScope API Key（阿里云百炼，可选）",
-    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    "model": "text-embedding-v3",
-    "dimensions": 1024,
+    "provider": "siliconflow",
+    "api_key": "你的SiliconFlow API Key（硅基流动，可选）",
+    "base_url": "https://api.siliconflow.cn/v1",
+    "model": "BAAI/bge-m3",
     "batch_size": 25,
     "proxy": "http://127.0.0.1:7890"
   }
 }
 ```
 
-> **检索模式**：RAG 检索默认 TF-IDF。配置 `embedding.api_key` 后自动升级为
-> **TF-IDF + 稠密向量 RRF 混合检索**（配置变更后下次启动自动重建索引，约 3-5 分钟）。
-> 未配置 key 时优雅降级为纯 TF-IDF，不影响使用。
+> **检索模式**：RAG 检索默认 TF-IDF。配置 `embedding.api_key`（任意 OpenAI 兼容
+> embedding 服务商均可，如硅基流动/智谱/OpenAI）后自动升级为
+> **TF-IDF + 稠密向量 RRF 混合检索**（配置变更后下次启动自动重建索引，
+> 首次向量化约 10-20 分钟，一次性）。未配置 key 时优雅降级为纯 TF-IDF。
 
 ## 数据库格式
 
