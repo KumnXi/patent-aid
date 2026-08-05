@@ -30,8 +30,53 @@ MARGIN_LEFT_MM = 25
 MARGIN_RIGHT_MM = 15
 MARGIN_BOTTOM_MM = 15
 
-# LaTeX 公式：$$...$$ 或 $...$
-FORMULA_RE = re.compile(r"\$\$(.+?)\$\$|\$(.+?)\$", re.DOTALL)
+# LaTeX 公式：$$...$$ / $...$ / \(...\)，或裸 LaTeX 行
+FORMULA_RE = re.compile(
+    r"\$\$(.+?)\$\$|\$(.+?)\$|\\\((.+?)\\\)", re.DOTALL)
+# 裸 LaTeX 判断：一行含 LaTeX 命令且主要是数学符号
+LATEX_CMD_RE = re.compile(r"\\[a-zA-Z]{2,}")
+
+# mathtext 不支持的命令清洗（\left...\right 成对定界 → 普通括号）
+_LATEX_CLEAN = [
+    (r"\left|", "|"), (r"\right|", "|"),
+    (r"\left(", "("), (r"\right)", ")"),
+    (r"\left[", "["), (r"\right]", "]"),
+    (r"\left\{", "{"), (r"\right\}", "}"),
+    (r"\left.", ""), (r"\right.", ""),
+    (r"\left", ""), (r"\right", ""),
+    (r"\begin{matrix}", ""), (r"\end{matrix}", ""),
+    (r"\begin{cases}", ""), (r"\end{cases}", ""),
+    (r"\text{", ""),
+]
+
+
+def _looks_like_latex_line(text: str) -> bool:
+    """判断一行是否为裸 LaTeX 公式（无 $ 包裹）
+
+    需含 LaTeX 命令，且剔除命令后剩余字符中中文占比低（避免把
+    "其中，\\(\\dot\\varepsilon\\)为..." 这种含公式的中文句误判为整行公式）。
+    """
+    t = text.strip()
+    if not t:
+        return False
+    if not LATEX_CMD_RE.search(t):
+        return False
+    # 剔除 LaTeX 命令后看剩余字符
+    no_cmd = LATEX_CMD_RE.sub("", t)
+    no_cmd = re.sub(r"[^一-鿿A-Za-z0-9()=+\-*/.,]", "", no_cmd)
+    if not no_cmd:
+        return True  # 纯公式
+    chinese = sum(1 for c in no_cmd if "一" <= c <= "鿿")
+    return chinese / len(no_cmd) < 0.3
+
+
+def _clean_latex(latex: str) -> str:
+    """清洗 mathtext 不支持的 LaTeX 命令（\left/\right、环境、\text）"""
+    for old, new in _LATEX_CLEAN:
+        latex = latex.replace(old, new)
+    # \text{...} 移除后清理残留的孤立花括号
+    latex = latex.replace("}", "") if latex.count("{") > latex.count("}") else latex
+    return latex.strip()
 
 
 def _set_run_font(run, name_cn: str = "宋体", size_pt: int = 12,
@@ -65,8 +110,8 @@ def _render_formula_png(latex: str, fontsize: int = 14, dpi: int = 200) -> Optio
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    # 清洗：LLM/JSON 转义可能产生双反斜杠，matplotlib mathtext 不认
-    latex = latex.replace("\\\\", "\\").strip()
+    # 清洗：转义反斜杠 + mathtext 不支持的命令（\left\right等）
+    latex = _clean_latex(latex.replace("\\\\", "\\").strip())
 
     try:
         fig = plt.figure(figsize=(0.1, 0.1))
@@ -157,19 +202,18 @@ def export_disclosure_to_word(disclosure: str, output_path: str,
             _set_run_font(run, size_pt=13, bold=True)
             i += 1
             continue
-        if stripped.startswith("## "):
-            p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(12)
-            p.paragraph_format.space_after = Pt(6)
-            run = p.add_run(stripped[3:].strip())
-            _set_run_font(run, size_pt=13, bold=True)
+
+        # 跳过裸 LaTeX 定界符行（\[ \] 成对包裹的显示公式）
+        if stripped in (r"\[", r"\]"):
             i += 1
             continue
 
-        # 公式：$$...$$ 单独成段
-        if stripped.startswith("$$") or (stripped.startswith("$")
-                                         and stripped.endswith("$")
-                                         and len(stripped) > 6):
+        # 公式段：$$...$$ 或 $...$ 或裸 LaTeX 行 → 渲染为图片
+        is_formula = (stripped.startswith("$$")
+                      or (stripped.startswith("$") and stripped.endswith("$")
+                          and len(stripped) > 6)
+                      or _looks_like_latex_line(stripped))
+        if is_formula:
             latex = stripped.strip("$").strip()
             img = _render_formula_png(latex)
             if img:
@@ -179,8 +223,9 @@ def export_disclosure_to_word(disclosure: str, output_path: str,
                 p.add_run().add_picture(str(img), width=Inches(3.5))
             else:
                 p = doc.add_paragraph()
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 run = p.add_run(stripped)
-                _set_run_font(run)
+                _set_run_font(run, bold=True)
             i += 1
             continue
 
@@ -202,7 +247,7 @@ def export_disclosure_to_word(disclosure: str, output_path: str,
                     run = p.add_run(before)
                     _set_run_font(run)
                 # 渲染公式
-                latex = (fm.group(1) or fm.group(2))
+                latex = (fm.group(1) or fm.group(2) or fm.group(3))
                 img = _render_formula_png(latex)
                 if img:
                     from docx.shared import Inches
