@@ -222,6 +222,22 @@ def api_download_word():
         return jsonify({"error": "Word导出失败，请稍后重试"}), 500
 
 
+@app.route("/api/claim-validate", methods=["POST"])
+def api_claim_validate():
+    """权利要求书格式校验（专利法细则）"""
+    data = request.get_json() or {}
+    disclosure = data.get("disclosure", "")
+    if not disclosure:
+        return jsonify({"error": "无内容可校验"}), 400
+    from src.core.claim_validator import validate_claims
+    try:
+        report = validate_claims(disclosure)
+        return jsonify({"success": True, "report": report})
+    except Exception as e:
+        logging.getLogger("patent_assistant").error("权利要求校验失败", exc_info=True)
+        return jsonify({"error": "权利要求校验失败，请稍后重试"}), 500
+
+
 @app.route("/api/authenticity-check", methods=["POST"])
 def api_authenticity_check():
     """数据真实性检查（防无中生有）"""
