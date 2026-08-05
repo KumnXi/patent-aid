@@ -342,6 +342,13 @@ class PatentInnovationEngine:
         except Exception as e:
             print(f"[真实性检查] 失败: {e}")
 
+        # 阶段 5：权利要求书格式自动校验（专利法细则）
+        try:
+            from .claim_validator import validate_claims
+            result["claim_validation"] = validate_claims(result["disclosure"])
+        except Exception as e:
+            print(f"[权利要求校验] 失败: {e}")
+
         return result
 
     def review_quality(self, disclosure: str, idea: str) -> dict:
