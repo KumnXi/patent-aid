@@ -192,10 +192,30 @@ class GooglePatentsClient:
         url = f"{self.base_url}/patent/{patent_id}/{self.language}"
 
         html = self._fetch_page(url)
+
+        # 备用通道：本机抓取失败（503/封IP）时用 Firecrawl 抓取
+        if not html:
+            html = self._firecrawl_fallback(patent_id)
+
         if not html:
             return None
 
         return self._parse_patent_page(html, patent_id, url)
+
+    def _firecrawl_fallback(self, patent_id: str) -> Optional[str]:
+        """Firecrawl 备用抓取（绕开本机 IP 被 Google 限流）"""
+        try:
+            from .firecrawl import create_firecrawl_client
+            fc = create_firecrawl_client()
+            if not fc.is_available():
+                return None
+            html = fc.scrape_patent_html(patent_id)
+            if html:
+                print(f"  [Firecrawl备用] 成功获取 {patent_id}")
+            return html
+        except Exception as e:
+            print(f"  [Firecrawl备用] 失败: {e}")
+            return None
 
     def _parse_patent_page(self, html: str, patent_id: str, url: str) -> Optional[GooglePatent]:
         """
