@@ -81,14 +81,15 @@ def _convert_node(node) -> list:
     if tag == "mstyle":
         return _convert_children(children)
 
-    # 文本节点（mi/mn/mo）→ 单个 run
+    # 文本节点（mi/mn/mo）→ 单个 run（必须用 <m:r><m:t>text</m:t></m:r>）
     if tag in ("mi", "mn", "mo", "mtext"):
         text = node.text or ""
         if not text and children:
             text = "".join(c.text or "" for c in children)
-        # 处理实体
-        text = text.replace("&#x003D;", "=").replace("&#x0003D;", "=")
-        return [_make("r", text=text)]
+        r = ET.Element(f"{{{OMML_NS}}}r")
+        t = ET.SubElement(r, f"{{{OMML_NS}}}t")
+        t.text = text
+        return [r]
 
     # 上标
     if tag == "msup" and len(children) >= 2:
