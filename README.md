@@ -2,20 +2,23 @@
 
 基于自建专利数据库的**电力行业 + 管道检测机器人**方向专利智能分析与撰写辅助系统。
 
-核心能力：**三阶段 LLM 交底书生成**（大纲规划 → 分章节生成 → 自动质检迭代），配套 879 篇专利知识库、知识图谱、RAG 检索和质量审查。
+核心能力：**从技术想法到标准专利格式交底书**的一键流水线——三阶段 LLM 生成 → 防无中生有自动修复 → 权利要求格式校验 → 导出标准 Word（原生公式 + 自动附图）。
 
 ## 功能概述
 
 | 能力 | 说明 |
 |------|------|
-| 技术交底书生成 | 三阶段架构：大纲 → 4组分章节生成 → 质检迭代（<70分组自动重写） |
+| 🚀 一键生成流水线 | `scripts/generate_patent.py`：想法 → 标准专利格式 Word，全自动 |
+| 📝 标准专利格式 | 发明名称→摘要→权利要求书→说明书（技术领域/背景技术/发明内容/附图说明/具体实施方式） |
+| 🧮 原生可编辑公式 | LaTeX → Word 原生 OMML 公式（无需 MathType/插件，可编辑） |
+| 🖼️ 说明书附图自动生成 | 附图说明的 Mermaid 流程图 → 专利风格框图插入 Word |
+| 🛡️ 防无中生有 | 5 类检查 + 生成后自动修复（删实验表述/量化改定性/删编造专利号） |
+| ⚖️ 权利要求格式校验 | 编号/完整性/特征段/引用格式/存在性/顺序 6 项自动校验 |
+| 🔐 历史加密存储 | 交底书 Fernet AES 加密，密钥本地管理 |
 | 质量审查 | 9维度评分（含防编造 no-new-matter 校验） |
-| 🛡️ 数据真实性检查 | 防无中生有：实验表述/量化效果/参数来源/专利核验/背景交代 5 类检查 |
-| 📄 Word 导出 | 标准专利格式（A4/页边距/宋体/段落编号），LaTeX 公式渲染 |
-| 专利数据采集 | 多源爬取（Google Patents / Patenthub），自动入库 |
+| 专利数据采集 | 多源爬取（Google Patents / Patenthub / Firecrawl 备用） |
 | 知识图谱 | 问题→方案→效果→技术→设备 多维关系图谱 |
 | RAG 检索 | TF-IDF + bge-m3 稠密向量 RRF 混合检索 |
-| 创新模式挖掘 | 8种创新类型自动分类、创新方向建议 |
 | Web 应用 | Flask + 单页前端，生成/审查/搜索/导出 |
 
 ## 环境搭建（小白版 · 每一步都有说明）
@@ -134,12 +137,49 @@ python scripts/fast_crawl.py
 
 如果爬一会儿报一堆 503 错误，说明 Clash 当前节点的 IP 被 Google 封了——在 Clash 里换个节点就行。
 
+### Firecrawl 备用通道（可选）
+
+当本机 IP 被 Google 封（503）时，可配置 [Firecrawl](https://firecrawl.dev) 作为备用爬取通道
+（它用数据中心代理池，抗封性更好）。在 `config/api_config.json` 配置：
+
+```json
+"firecrawl": {
+  "api_key": "你的Firecrawl API Key",
+  "base_url": "https://api.firecrawl.dev",
+  "timeout": 60
+}
+```
+
+配置后，主爬虫失败会自动切到 Firecrawl。免费档约 500 credits/月，仅作备用。
+
 ---
+
+## 🚀 一键生成流水线
+
+一条命令，从技术想法到**标准专利格式 Word**（含原生公式、自动附图、防编造修复、权利要求校验）：
+
+```bash
+python scripts/generate_patent.py "你的技术想法" \
+    --title "一种..." \
+    --tech-field "技术领域" \
+    --purpose "要解决的问题" \
+    --core-method "核心方法" \
+    --problems "现有技术不足" \
+    --out output/交底书.docx
+```
+
+流水线 5 步全自动：
+```
+想法 → ①三阶段LLM生成 → ②防无中生有自动修复 → ③权利要求格式校验
+     → ④保存历史(加密) → ⑤导出标准Word(原生公式+说明书附图)
+```
 
 ## 常用命令
 
 ```bash
 python scripts/batch_quality_test.py   # 批量质量测试（10题）
+python scripts/ipc_discovery.py 3      # IPC领域专利发现
+python scripts/fast_crawl.py           # 并发爬取专利全文
 ```
 
 更多脚本见 [scripts/README.md](scripts/README.md)。
