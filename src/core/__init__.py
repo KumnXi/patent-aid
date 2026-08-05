@@ -329,6 +329,19 @@ class PatentInnovationEngine:
             polisher = LLMPolisher(str(self.config_dir / "api_config.json"))
             result["disclosure"] = polisher.polish(disclosure, idea)
 
+        # 阶段 4：数据真实性自动检查与修复（防无中生有）
+        try:
+            from .data_authenticity_checker import DataAuthenticityChecker
+            db = self.db_loader._db if hasattr(self.db_loader, "_db") else None
+            fix_result = DataAuthenticityChecker().auto_fix(
+                result["disclosure"], idea, db
+            )
+            if fix_result["fixed_count"] > 0:
+                result["disclosure"] = fix_result["fixed"]
+                result["authenticity_fixed"] = fix_result
+        except Exception as e:
+            print(f"[真实性检查] 失败: {e}")
+
         return result
 
     def review_quality(self, disclosure: str, idea: str) -> dict:

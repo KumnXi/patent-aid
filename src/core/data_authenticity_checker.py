@@ -168,6 +168,117 @@ class DataAuthenticityChecker:
             "summary": self._build_summary(issues, background_score),
         }
 
+    def auto_fix(self, disclosure: str, idea: str = "",
+                 patent_db: Optional[Dict] = None) -> Dict:
+        """自动修复编造内容（保守策略，避免误删）
+
+        修复规则：
+        - 编造实验表述（experiment）：整句删除
+        - 无来源量化效果（error）：将"提高X%"中的数字改为定性（"有效提高"）
+        - 编造专利号（patent）：删除该专利号
+        - 警告类（参数无来源等）：不自动改（有误改风险），保留在报告中供人工处理
+
+        Args:
+            disclosure: 交底书全文
+            idea: 原始技术想法
+            patent_db: 专利数据库
+
+        Returns:
+            {"fixed": 修复后文本, "fixes": 修复记录列表, "issue_count": 原问题数,
+             "fixed_count": 修复数}
+        """
+        report = self.check(disclosure, idea, patent_db)
+        fixes: List[Dict] = []
+        lines = disclosure.split("\n")
+        new_lines = []
+
+        for line in lines:
+            line_new = line
+            # 1. 删除编造实验句
+            line_new, f1 = self._remove_experiment_sentences(line_new)
+            if f1:
+                fixes.append(f1)
+            # 2. 无来源量化效果 → 定性
+            line_new, f2 = self._dequantify_effects(line_new)
+            if f2:
+                fixes.append(f2)
+            # 3. 删除编造专利号
+            line_new, f3 = self._remove_fake_patents(line_new, patent_db)
+            if f3:
+                fixes.append(f3)
+            new_lines.append(line_new)
+
+        fixed = "\n".join(new_lines)
+        # 清理删除短语后残留的孤立标点
+        fixed = re.sub(r"(\[\d{4}\])\s*，", r"\1 ", fixed)  # [0001] 后孤立逗号
+        fixed = re.sub(r"，\s*，", "，", fixed)              # 连续逗号
+        return {
+            "fixed": fixed,
+            "fixes": fixes,
+            "issue_count": len(report["issues"]),
+            "fixed_count": len(fixes),
+            "remaining_score": self.check(fixed, idea, patent_db)["score"],
+        }
+
+    def _remove_experiment_sentences(self, line: str) -> tuple:
+        """删除一行中的编造实验表述短语（保守，保留其余内容）
+
+        只删除"经实验证明""测试表明"等短语本身，避免误删整条权利要求。
+        """
+        removed = []
+        new_line = line
+        for pat in self.EXPERIMENT_PATTERNS:
+            if re.search(pat, new_line):
+                removed.append(pat.strip())
+                new_line = re.sub(pat, "", new_line)
+        if removed:
+            return new_line, {"type": "experiment",
+                              "action": "删除实验表述短语", "detail": removed[0]}
+        return new_line, None
+
+    def _dequantify_effects(self, line: str) -> tuple:
+        """把无来源量化效果中的数字改定性（如"提高30%"→"有效提高"）"""
+        # 跳过工程判据/阈值类（不误伤）
+        if any(k in line for k in ("设计寿命", "剩余寿命", "判定准则", "设定值", "阈值")):
+            return line, None
+        verb_map = {
+            "提高": "有效提高", "降低": "有效降低", "缩短": "显著缩短",
+            "减少": "有效减少", "增加": "有效增加", "提升": "有效提升",
+            "节约": "有效节约", "延长": "显著延长", "加快": "有效加快",
+            "节省": "有效节省",
+        }
+        changed = False
+        matched_verb = ""
+        for verb, replacement in verb_map.items():
+            # 匹配 动词...数字%
+            pat = re.compile(rf"{verb}[^。；，]*?\d+(?:\.\d+)?\s*%")
+            if pat.search(line):
+                line = pat.sub(replacement, line)
+                changed = True
+                if not matched_verb:
+                    matched_verb = verb
+        if changed:
+            return line, {"type": "effect", "action": "数字改定性",
+                          "detail": matched_verb + "X%"}
+        return line, None
+
+    def _remove_fake_patents(self, line: str, patent_db: Optional[Dict]) -> tuple:
+        """删除库中不存在的专利号（编造专利）"""
+        if not patent_db:
+            return line, None
+        patents = patent_db.get("patents", {})
+        removed = []
+        def _repl(m):
+            pid = m.group(0)
+            if pid not in patents:
+                removed.append(pid)
+                return ""
+            return pid
+        new_line = self.PATENT_ID_PATTERN.sub(_repl, line)
+        if removed:
+            return new_line, {"type": "patent", "action": "删除编造专利号", "detail": removed[0]}
+        return new_line, None
+
     def _check_background(self, disclosure: str) -> int:
         """数据背景交代评分：关键物理量是否有关联背景说明"""
         if not disclosure:
