@@ -24,6 +24,7 @@ from docx.oxml.ns import qn
 from docx.oxml import parse_xml
 
 from src.utils.math_omml import latex_to_omml_math
+from src.utils.diagram_generator import mermaid_to_png
 
 # 页面规格（mm）
 PAGE_WIDTH_MM = 210
@@ -227,6 +228,26 @@ def export_disclosure_to_word(disclosure: str, output_path: str,
             run = p.add_run(heading)
             _set_run_font(run, size_pt=13, bold=True)
             i += 1
+            continue
+
+        # Mermaid 附图代码块：```mermaid ... ``` → 渲染 PNG 插入
+        if stripped.startswith("```mermaid"):
+            mermaid_lines = []
+            i += 1
+            while i < len(lines) and not lines[i].strip().startswith("```"):
+                mermaid_lines.append(lines[i])
+                i += 1
+            if i < len(lines):
+                i += 1  # 跳过结束的 ```
+            mermaid_text = "\n".join(mermaid_lines)
+            if mermaid_text.strip():
+                fig_path = Path(tempfile.gettempdir()) / "patent_fig.png"
+                png = mermaid_to_png(mermaid_text, str(fig_path))
+                if png:
+                    p = doc.add_paragraph()
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    from docx.shared import Inches
+                    p.add_run().add_picture(png, width=Inches(5.2))
             continue
 
         # 跳过裸 LaTeX 定界符行（\[ \] 成对包裹的显示公式）
