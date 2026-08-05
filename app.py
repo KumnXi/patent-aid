@@ -195,8 +195,51 @@ def api_download():
     out_path = PROJECT_ROOT / "output" / filename
     out_path.parent.mkdir(exist_ok=True)
     out_path.write_text(disclosure, encoding="utf-8")
-    
+
     return send_file(str(out_path), as_attachment=True, download_name=filename)
+
+
+@app.route("/api/download-word", methods=["POST"])
+def api_download_word():
+    """导出标准专利格式 Word 文档（含 LaTeX 公式渲染）"""
+    data = request.get_json() or {}
+    disclosure = data.get("disclosure", "")
+    title = data.get("title", "技术交底书")
+
+    if not disclosure:
+        return jsonify({"error": "无内容可下载"}), 400
+
+    from src.utils.word_exporter import export_disclosure_to_word
+    safe_title = "".join(c for c in title if c.isalnum() or c in "._- ")[:50] or "交底书"
+    filename = f"{safe_title}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    out_path = PROJECT_ROOT / "output" / filename
+
+    try:
+        export_disclosure_to_word(disclosure, str(out_path), title=title)
+        return send_file(str(out_path), as_attachment=True, download_name=filename)
+    except Exception as e:
+        logging.getLogger("patent_assistant").error("Word导出失败", exc_info=True)
+        return jsonify({"error": "Word导出失败，请稍后重试"}), 500
+
+
+@app.route("/api/authenticity-check", methods=["POST"])
+def api_authenticity_check():
+    """数据真实性检查（防无中生有）"""
+    data = request.get_json() or {}
+    disclosure = data.get("disclosure", "")
+    idea = data.get("idea", "")
+
+    if not disclosure:
+        return jsonify({"error": "无内容可检查"}), 400
+
+    from src.core.data_authenticity_checker import DataAuthenticityChecker
+    try:
+        db = get_patent_db() if _patent_db is not None else None
+        report = DataAuthenticityChecker().check(disclosure, idea, db)
+        return jsonify({"success": True, "report": report})
+    except Exception as e:
+        logging.getLogger("patent_assistant").error("真实性检查失败", exc_info=True)
+        return jsonify({"error": "真实性检查失败，请稍后重试"}), 500
 
 
 # ═══════════════════════════════════════════════════════════

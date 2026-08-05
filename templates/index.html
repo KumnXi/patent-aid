@@ -181,9 +181,12 @@
                         <div class="stats-row"><span id="rMode"></span><span id="rWords"></span><span id="rSections"></span><span id="rTime"></span></div>
                         <div class="result-box" id="rContent"></div>
                         <div style="display:flex;gap:12px;margin-top:12px">
-                            <button class="btn btn-outline" onclick="downloadMd()">⬇️ 下载</button>
+                            <button class="btn btn-outline" onclick="downloadMd()">⬇️ 下载MD</button>
+                            <button class="btn btn-outline" onclick="downloadWord()">📄 下载Word</button>
                             <button class="btn btn-outline" onclick="copyMd()">📋 复制</button>
+                            <button class="btn btn-outline" onclick="checkAuthenticity()">🛡️ 防无中生有检查</button>
                         </div>
+                        <div id="authenticityResult" style="display:none;margin-top:12px;border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px"></div>
                     </div>
                 </div>
             </div>
@@ -381,6 +384,37 @@ async function downloadMd(){
     const a=document.createElement('a');a.href=url;a.download=currentTitle+'.md';a.click();URL.revokeObjectURL(url);
 }
 function copyMd(){navigator.clipboard.writeText(currentDisclosure).then(()=>alert('已复制'));}
+async function downloadWord(){
+    if(!currentDisclosure){alert('暂无可下载内容');return;}
+    const r=await fetch('/api/download-word',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({disclosure:currentDisclosure,title:currentTitle})});
+    const blob=await r.blob();const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=currentTitle+'.docx';a.click();URL.revokeObjectURL(url);
+}
+async function checkAuthenticity(){
+    if(!currentDisclosure){alert('请先生成交底书');return;}
+    const box=document.getElementById('authenticityResult');
+    box.style.display='block';
+    box.innerHTML='<div class="spinner" style="display:inline-block"></div> 检查中...';
+    const idea=document.getElementById('idea').value.trim();
+    try{
+        const r=await fetch('/api/authenticity-check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({disclosure:currentDisclosure,idea})});
+        const d=await r.json();
+        if(d.success){
+            const rep=d.report;
+            let html=`<div style="font-weight:600;margin-bottom:6px">🛡️ 数据真实性检查：<b>${rep.score}分 ${rep.grade}级</b>（背景交代${rep.background_score}%）</div>`;
+            html+=`<div style="color:#666;margin-bottom:8px">${rep.summary}</div>`;
+            if(rep.issues&&rep.issues.length){
+                html+='<div style="margin-top:6px">';
+                rep.issues.slice(0,10).forEach(i=>{
+                    const color=i.severity==='critical'?'#e06c75':(i.severity==='error'?'#e5c07b':'#98c379');
+                    html+=`<div style="color:${color};margin-bottom:4px">${i.severity==='critical'?'🔴':(i.severity==='error'?'🟡':'🟢')} ${i.message}</div>`;
+                });
+                html+='</div>';
+            }else html+='<div style="color:#98c379;margin-top:6px">✅ 未发现明显无中生有问题</div>';
+            box.innerHTML=html;
+        }else box.innerHTML='<span style="color:#e06c75">'+d.error+'</span>';
+    }catch(e){box.innerHTML='<span style="color:#e06c75">网络错误: '+e.message+'</span>';}
+}
 
 // ═══ 搜索 ═══
 async function loadIpcList(){
