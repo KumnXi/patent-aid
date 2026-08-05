@@ -44,3 +44,4 @@ data/disclosure_history/
 .env
 *.key
 config/api_config.json
+data/.secret.key
