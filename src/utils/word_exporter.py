@@ -117,10 +117,13 @@ def export_disclosure_to_word(disclosure: str, output_path: str,
     pf.line_spacing_rule = WD_LINE_SPACING.MULTIPLE
     pf.line_spacing = 1.5
 
-    # ── 提取发明名称 ──
-    if not title:
-        m = re.search(r"^#\s+(.+)$", disclosure, re.M)
-        title = m.group(1).strip() if m else "专利交底书"
+    # ── 提取发明名称：优先标准格式 "## 发明名称" 章节的下一行 ──
+    m = re.search(r"##\s*发明名称\s*\n\s*([^\n]+)", disclosure)
+    if m:
+        title = m.group(1).strip()
+    elif not title or title in ("专利交底书", "技术交底书"):
+        m2 = re.search(r"^#\s+(.+)$", disclosure, re.M)
+        title = m2.group(1).strip() if m2 else "专利交底书"
 
     # 名称第一页第一行，居中
     p_title = doc.add_paragraph()
@@ -130,18 +133,30 @@ def export_disclosure_to_word(disclosure: str, output_path: str,
     doc.add_paragraph()  # 名称与正文之间空一行
 
     # ── 按行处理正文 ──
-    lines = disclosure.split("\n")
+    # 移除"发明名称"章节（顶部已作为居中标题输出，避免重复）
+    disclosure_clean = re.sub(
+        r"##\s*发明名称\s*\n\s*[^\n]+\n?", "", disclosure, count=1)
+    lines = disclosure_clean.split("\n")
     i = 0
     while i < len(lines):
         line = lines[i]
         stripped = line.strip()
 
-        # 跳过文档标题行（已作为名称输出）
+        # 跳过文档一级标题行（已作为名称输出）
         if stripped.startswith("# ") and i == 0:
             i += 1
             continue
 
         # Markdown 标题 → 加粗段落
+        if stripped.startswith("## "):
+            heading = stripped[3:].strip()
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(12)
+            p.paragraph_format.space_after = Pt(6)
+            run = p.add_run(heading)
+            _set_run_font(run, size_pt=13, bold=True)
+            i += 1
+            continue
         if stripped.startswith("## "):
             p = doc.add_paragraph()
             p.paragraph_format.space_before = Pt(12)
