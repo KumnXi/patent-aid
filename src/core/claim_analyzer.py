@@ -84,7 +84,12 @@ class ClaimAnalyzer:
         """计算权利要求统计指标"""
         n = len(patents)
         if n == 0:
-            return {}
+            return {
+                "avg_total_claims": 0, "avg_independent_claims": 0,
+                "avg_dependent_claims": 0, "avg_dependency_depth": 0,
+                "most_common_structure": "无数据",
+                "structure_distribution": {},
+            }
 
         total_claims = [p.claims_tree.total_claims for p in patents]
         indep_claims = [len(p.claims_tree.independent_claims) for p in patents]
