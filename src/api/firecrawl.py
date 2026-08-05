@@ -86,6 +86,63 @@ class FirecrawlClient:
             print(f"[Firecrawl] 抓取异常: {e}")
             return None
 
+    def search(self, query: str, limit: int = 10) -> list:
+        """Firecrawl 搜索（用于专利/技术资料发现）
+
+        Args:
+            query: 搜索关键词
+            limit: 返回条数
+
+        Returns:
+            [{"url", "title", "description", ...}, ...]，失败返回 []
+        """
+        if not self.is_available():
+            return []
+        endpoint = f"{self.base_url}/v2/search"
+        payload = {"query": query, "limit": min(limit, 100), "sources": ["web"]}
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        try:
+            resp = requests.post(endpoint, headers=headers, json=payload,
+                                 timeout=self.timeout)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("success"):
+                    d = data.get("data", {})
+                    # v2 结构：data.web / data.news 等分源列表
+                    for source in ("web", "news"):
+                        if isinstance(d.get(source), list):
+                            return d[source]
+                    if isinstance(d, list):
+                        return d
+            print(f"[Firecrawl] search HTTP {resp.status_code}")
+        except Exception as e:
+            print(f"[Firecrawl] search 异常: {e}")
+        return []
+
+    def scrape_markdown(self, url: str) -> Optional[str]:
+        """抓取网页转 Markdown（用于非 Google Patents 的普通网页）"""
+        if not self.is_available():
+            return None
+        endpoint = f"{self.base_url}/v2/scrape"
+        payload = {"url": url, "formats": ["markdown"]}
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        try:
+            resp = requests.post(endpoint, headers=headers, json=payload,
+                                 timeout=self.timeout)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("success") and data.get("data", {}).get("markdown"):
+                    return data["data"]["markdown"]
+        except Exception as e:
+            print(f"[Firecrawl] scrape_markdown 异常: {e}")
+        return None
+
     @staticmethod
     def _load_config(config_path: str) -> dict:
         try:
