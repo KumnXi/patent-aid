@@ -21,6 +21,9 @@ from docx import Document
 from docx.shared import Pt, Mm, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.oxml.ns import qn
+from docx.oxml import parse_xml
+
+from src.utils.math_omml import latex_to_omml_math
 
 # 页面规格（mm）
 PAGE_WIDTH_MM = 210
@@ -93,6 +96,29 @@ def _set_run_font(run, name_cn: str = "宋体", size_pt: int = 12,
         rfonts = rpr.makeelement(qn("w:rFonts"), {})
         rpr.append(rfonts)
     rfonts.set(qn("w:eastAsia"), name_cn)
+
+
+def _add_omml_formula(p, latex: str) -> bool:
+    """尝试将 LaTeX 公式作为 Word 原生公式（OMML）插入段落
+
+    OMML 是可编辑公式，大小/基线/字体与正文自动协调（比图片规范）。
+    成功返回 True，失败返回 False（调用方应回退为图片/文本）。
+
+    Args:
+        p: python-docx 段落对象
+        latex: LaTeX 公式
+
+    Returns:
+        是否成功插入
+    """
+    omml = latex_to_omml_math(latex)
+    if not omml:
+        return False
+    try:
+        p._p.append(parse_xml(omml))
+        return True
+    except Exception:
+        return False
 
 
 def _render_formula_png(latex: str, fontsize: int = 14, dpi: int = 200) -> Optional[Path]:
@@ -215,17 +241,17 @@ def export_disclosure_to_word(disclosure: str, output_path: str,
                       or _looks_like_latex_line(stripped))
         if is_formula:
             latex = stripped.strip("$").strip()
-            img = _render_formula_png(latex)
-            if img:
-                p = doc.add_paragraph()
-                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                from docx.shared import Inches
-                p.add_run().add_picture(str(img), width=Inches(3.5))
-            else:
-                p = doc.add_paragraph()
-                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                run = p.add_run(stripped)
-                _set_run_font(run, bold=True)
+            p = doc.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            if not _add_omml_formula(p, latex):
+                # OMML 失败回退图片
+                img = _render_formula_png(latex)
+                if img:
+                    from docx.shared import Inches
+                    p.add_run().add_picture(str(img), width=Inches(3.5))
+                else:
+                    run = p.add_run(stripped)
+                    _set_run_font(run, bold=True)
             i += 1
             continue
 
@@ -246,15 +272,16 @@ def export_disclosure_to_word(disclosure: str, output_path: str,
                 if before.strip():
                     run = p.add_run(before)
                     _set_run_font(run)
-                # 渲染公式
+                # 渲染公式：OMML 原生公式优先，失败回退图片/文本
                 latex = (fm.group(1) or fm.group(2) or fm.group(3))
-                img = _render_formula_png(latex)
-                if img:
-                    from docx.shared import Inches
-                    p.add_run().add_picture(str(img), width=Inches(2.8))
-                else:
-                    run = p.add_run(f"${latex}$")
-                    _set_run_font(run)
+                if not _add_omml_formula(p, latex):
+                    img = _render_formula_png(latex)
+                    if img:
+                        from docx.shared import Inches
+                        p.add_run().add_picture(str(img), width=Inches(2.8))
+                    else:
+                        run = p.add_run(f"${latex}$")
+                        _set_run_font(run)
                 rest = rest[fm.end():]
             else:
                 if rest.strip():
