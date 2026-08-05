@@ -46,3 +46,5 @@ data/disclosure_history/
 config/api_config.json
 data/.secret.key
 .firecrawl/
+data/target_patents_firecrawl.json
+data/knowledge_base/
