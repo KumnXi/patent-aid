@@ -72,6 +72,7 @@ class InnovationMiner:
         self.text_processor = ChineseTextProcessor()
         self.patterns: List[InnovationPattern] = []
         self.patent_classifications: Dict[str, InnovationType] = {}
+        self._all_patents: Dict[str, StructuredPatent] = {}
 
         # 创新类型的特征关键词
         self.type_keywords = {
@@ -127,6 +128,9 @@ class InnovationMiner:
         Returns:
             挖掘结果摘要
         """
+        # 0. 保存全库专利（供建议时按领域过滤参考专利）
+        self._all_patents = {p.patent_id: p for p in patents if p.is_parsed}
+
         # 1. 对每篇专利进行创新类型分类
         for p in patents:
             if p.is_parsed:
@@ -265,7 +269,7 @@ class InnovationMiner:
                 description=self._get_type_description(inno_type),
                 typical_problem_template=typical_problem[:200],
                 typical_solution_template=typical_solution[:200],
-                example_patent_ids=[p.patent_id for p in type_patents[:5]],
+                example_patent_ids=[p.patent_id for p in type_patents[:20]],
                 frequency=len(type_patents),
                 success_indicators=success_indicators,
                 keywords=top_keywords,
@@ -606,7 +610,10 @@ class InnovationMiner:
                     "description": pattern.description,
                     "relevance_score": relevance,
                     "typical_approach": pattern.typical_solution_template[:200],
-                    "reference_patents": pattern.example_patent_ids,
+                    # 参考专利按领域相关度过滤，避免推荐无关领域的专利
+                    "reference_patents": self._filter_reference_patents(
+                        idea, pattern.example_patent_ids, top_k=3
+                    ),
                     "success_factors": pattern.success_indicators,
                 })
 
@@ -631,6 +638,57 @@ class InnovationMiner:
             })
 
         return suggestions
+
+    def _filter_reference_patents(self, idea: str,
+                                  candidate_ids: List[str],
+                                  top_k: int = 3) -> List[str]:
+        """按领域相关度过滤参考专利
+
+        对候选专利的（标题 + 技术问题 + 技术方案）与用户想法做 TF-IDF 余弦相似度，
+        返回与想法领域最相关的 top_k 个专利 ID，避免推荐无关领域的专利。
+
+        Args:
+            idea: 用户的技术想法
+            candidate_ids: 候选专利 ID 列表
+            top_k: 返回数量
+
+        Returns:
+            过滤后的专利 ID 列表
+        """
+        if not candidate_ids or not self._all_patents:
+            return candidate_ids[:top_k]
+
+        # 构建每个候选专利的检索文本
+        docs = []
+        valid_ids = []
+        for pid in candidate_ids:
+            p = self._all_patents.get(pid)
+            if not p:
+                continue
+            text = " ".join([
+                p.title or "",
+                (p.technical_problem or "")[:300],
+                (p.technical_solution or "")[:300],
+            ])
+            if text.strip():
+                docs.append(text)
+                valid_ids.append(pid)
+
+        if not docs:
+            return candidate_ids[:top_k]
+
+        try:
+            # 批量向量化：idea + 所有候选，一次拟合
+            tokenized = [" ".join(self.text_processor.segment_words(idea))]
+            tokenized += [" ".join(self.text_processor.segment_words(d)) for d in docs]
+            vec = TfidfVectorizer(max_features=500).fit_transform(tokenized)
+            scores = cosine_similarity(vec[0:1], vec[1:])[0]
+
+            # 按分数排序，返回 top_k
+            ranked = sorted(zip(valid_ids, scores), key=lambda x: x[1], reverse=True)
+            return [pid for pid, sc in ranked[:top_k]]
+        except Exception:
+            return candidate_ids[:top_k]
 
     def _identify_domain(self, idea: str) -> str:
         """识别想法所属的技术领域
