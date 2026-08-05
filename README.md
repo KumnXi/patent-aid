@@ -152,6 +152,24 @@ python scripts/fast_crawl.py
 
 配置后，主爬虫失败会自动切到 Firecrawl。免费档约 500 credits/月，仅作备用。
 
+### Firecrawl 领域发现（拓展数据库）
+
+用 Firecrawl 的搜索能力**发现**新专利和论文/报告（Google Patents 详情页对 Firecrawl 有 JS 反爬，
+因此 Firecrawl 负责发现，专利全文仍用 xhr 通道抓取）：
+
+```bash
+# 搜索领域关键词，提取专利号清单 + 抓取论文/报告入知识库
+python scripts/firecrawl_discover.py --query "管道检测 专利" --limit 10 --fetch-docs
+
+# 默认多组关键词（管道检测 + 电力 + 海底管道 + 燃气 + 电缆隧道）
+python scripts/firecrawl_discover.py
+
+# 发现的专利号存 data/target_patents_firecrawl.json，用 fast_crawl 抓全文入库
+python scripts/fast_crawl.py
+```
+
+抓取的非专利资料（论文/综述/市场报告）存入 `data/knowledge_base/`。
+
 ---
 
 ## 🚀 一键生成流水线
