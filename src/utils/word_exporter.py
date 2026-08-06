@@ -247,7 +247,8 @@ def export_disclosure_to_word(disclosure: str, output_path: str,
                     p = doc.add_paragraph()
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     from docx.shared import Inches
-                    p.add_run().add_picture(png, width=Inches(5.2))
+                    # 可用页宽 170mm ≈ 6.7in；取 6.0 保证可读且不超页边
+                    p.add_run().add_picture(png, width=Inches(6.0))
             continue
 
         # 跳过裸 LaTeX 定界符行（\[ \] 成对包裹的显示公式）

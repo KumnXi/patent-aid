@@ -125,12 +125,12 @@ def parse_mermaid(text: str) -> Optional[Dict]:
 #  节点尺寸估算
 # ──────────────────────────────────────────────
 
-def _estimate_node_size(label: str, fontsize: float = 9) -> Tuple[float, float]:
+def _estimate_node_size(label: str, fontsize: float = 12) -> Tuple[float, float]:
     """根据文本估算节点渲染尺寸（单位：matplotlib data coords）
 
     Args:
         label: 节点标签（可能含 <br/> 换行）
-        fontsize: 字体大小
+        fontsize: 字体大小（pt），节点尺寸随字号线性缩放
 
     Returns:
         (width, height) — 半宽半高各为全尺寸的一半
@@ -138,11 +138,26 @@ def _estimate_node_size(label: str, fontsize: float = 9) -> Tuple[float, float]:
     lines = label.replace("<br/>", "\n").replace("<br>", "\n").split("\n")
     max_line_len = max((len(line) for line in lines), default=0)
 
-    # 中文字符宽度约 0.22 单位/字 (@9pt)，英文约 0.12
-    # 混合估算：每个字符 0.20 单位
-    w = max(2.4, max_line_len * 0.20 + 0.8)   # +0.8 内边距
-    h = max(0.8, len(lines) * 0.38 + 0.30)     # +0.30 内边距
+    # 基准字号 9pt 的字符宽度系数，随字号线性缩放
+    scale = fontsize / 9.0
+    # 中文字符宽度约 0.20 单位/字（@9pt）
+    w = max(2.6 * scale, max_line_len * 0.20 * scale + 0.9 * scale)
+    h = max(0.9 * scale, len(lines) * 0.38 * scale + 0.35 * scale)
     return w, h
+
+
+def _pick_fontsize(node_count: int) -> int:
+    """按节点数量选择字号：节点少用大字，节点多用适中字
+
+    目的：保证导出 Word 后文字清晰可读（大图不会因缩放而看不清）。
+    """
+    if node_count <= 5:
+        return 15
+    if node_count <= 8:
+        return 14
+    if node_count <= 12:
+        return 12
+    return 11
 
 
 # ──────────────────────────────────────────────
@@ -316,10 +331,14 @@ def _render(diagram: Dict, out_path: str, fontname: str = "SimHei") -> bool:
     direction = diagram["direction"]
     shapes = diagram.get("shapes", {})
 
+    # 0. 按节点数量选择字号（保证导出 Word 后文字清晰）
+    node_font = _pick_fontsize(len(nodes))
+    edge_font = max(9, node_font - 3)
+
     # 1. 计算节点尺寸（菱形用稍大的尺寸以容纳文本）
     node_sizes: Dict[str, Tuple[float, float]] = {}
     for nid, label in nodes.items():
-        w, h = _estimate_node_size(label)
+        w, h = _estimate_node_size(label, fontsize=node_font)
         if shapes.get(nid) == "diamond":
             w *= 1.5  # 菱形需要更宽
             h *= 1.5
@@ -405,7 +424,7 @@ def _render(diagram: Dict, out_path: str, fontname: str = "SimHei") -> bool:
         # 文本（支持 <br/> 换行）
         display_label = label.replace("<br/>", "\n").replace("<br>", "\n")
         ax.text(x, y, display_label,
-                ha="center", va="center", fontsize=9,
+                ha="center", va="center", fontsize=node_font,
                 fontname=fontname, zorder=3,
                 linespacing=1.3)
 
@@ -454,7 +473,7 @@ def _render(diagram: Dict, out_path: str, fontname: str = "SimHei") -> bool:
             ax.text(mid_x + offset_x, mid_y + offset_y,
                     edge_label,
                     ha="center", va="center",
-                    fontsize=7, fontname=fontname,
+                    fontsize=edge_font, fontname=fontname,
                     color="#555555", zorder=5,
                     bbox=dict(facecolor="white", edgecolor="none",
                               pad=1, alpha=0.9))
