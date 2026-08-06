@@ -257,7 +257,7 @@ GROUP_SPECS = [
             "## 背景技术（3-5段：先介绍技术背景与现状，再逐一分析相关现有专利的公开内容，"
             "最后总结现有技术的至少3点具体不足。引用参考专利时写明专利号。）"
         ),
-        "max_tokens": 3000,
+        "max_tokens": 4000,
     },
     {
         "key": "G2",
@@ -271,7 +271,7 @@ GROUP_SPECS = [
             "参数用示例性取值表述，严禁编造实测数据。这是全文核心，至少8段；\n"
             "【有益效果】与现有技术对比至少4点，用定性描述（有效降低/显著改善），严禁编造具体百分比或实验数据"
         ),
-        "max_tokens": 4096,
+        "max_tokens": 6000,
     },
     {
         "key": "G3",
@@ -291,7 +291,7 @@ GROUP_SPECS = [
             "描述实施步骤与工作流程，参数用'示例性取值，可根据实际工况调整'表述；"
             "严禁编造具体工程案例、实测数据、设备型号，需要真实数据处用【此处补充实际数据】占位）"
         ),
-        "max_tokens": 4096,
+        "max_tokens": 10000,
     },
     {
         "key": "G4",
@@ -306,7 +306,7 @@ GROUP_SPECS = [
             "从属权利要求应对技术方案中的关键参数、算法、结构做进一步限定。\n"
             "## 摘要（200字以内的技术摘要，不编号，无[0001]标记）"
         ),
-        "max_tokens": 3000,
+        "max_tokens": 4000,
     },
 ]
 
@@ -406,18 +406,35 @@ class DisclosureGenerator:
             except LLMError as e:
                 logger.warning(f"[阶段2] 分章节生成失败: {e}，回退单次生成")
 
-        # ── 二级回退：单次生成 ──
-        try:
-            disclosure = self._generate_single_shot(
-                idea, title, fields, rag_backgrounds, suggestions
-            )
-            disclosure = _renumber_paragraphs(disclosure)
-            return disclosure, "llm_single"
-        except LLMError as e:
-            logger.warning(f"单次生成失败({e})，回退模板生成")
+        # ── 二级回退：单次生成（带完整性校验，不完整则重试）──
+        for attempt in range(2):
+            try:
+                disclosure = self._generate_single_shot(
+                    idea, title, fields, rag_backgrounds, suggestions
+                )
+                if not self._is_complete(disclosure):
+                    logger.warning(f"单次生成不完整(第{attempt+1}次)，"
+                                   f"仅{len(disclosure)}字，重试...")
+                    continue
+                disclosure = _renumber_paragraphs(disclosure)
+                return disclosure, "llm_single"
+            except LLMError as e:
+                logger.warning(f"单次生成失败({e})，回退模板生成")
+                break
 
         disclosure = self._generate_template(idea, title, fields, context, suggestions)
         return disclosure, "template"
+
+    @staticmethod
+    def _is_complete(disclosure: str) -> bool:
+        """检查交底书是否包含全部必要章节（防止单次生成只输出部分）"""
+        required = ["技术领域", "背景技术", "发明内容", "附图说明",
+                    "具体实施方式", "权利要求", "摘要"]
+        missing = [s for s in required if s not in disclosure]
+        # 长度兜底：完整交底书通常 > 5000 字
+        if len(disclosure) < 5000:
+            return False
+        return not missing
 
     def iterate_quality(self, disclosure: str, idea: str,
                         sections: Dict[str, str]) -> Tuple[str, Dict]:
