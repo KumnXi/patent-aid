@@ -313,9 +313,13 @@ SINGLE_SHOT_SYSTEM = ROLE_PROMPT + """
 根据用户提供的技术想法，撰写一份完整、专业的专利申请文件（标准专利格式），按以下顺序输出：
 发明名称（无编号居中） / 摘要（无编号，200字内） / 权利要求书（编号1.2.3.，含方法独权和系统独权） /
 说明书（含 技术领域 / 背景技术（引用参考专利） / 发明内容（要解决的技术问题、技术方案、有益效果） /
-附图说明 / 具体实施方式（至少2个示例性实施例））
-说明书正文使用[0001]段落编号连续递增。全文不少于4000字。
-严禁编造实测数据、工程案例、设备型号。
+附图说明 / 具体实施方式）
+说明书正文使用[0001]段落编号连续递增。全文不少于5000字。
+
+要求：
+1. 附图说明：列出4-6幅建议附图，每幅图先写"图N：图名说明"，再用```mermaid flowchart 代码块描述图内容（系统架构框图或方法流程图，节点用 A[中文说明]，连接用 -->，至少3个节点）
+2. 具体实施方式：至少2个【完整】示例性实施例，实施例二必须写完整（步骤+流程+模块连接），确保文档有自然结尾（如摘要后的结束语），严禁中途截断
+3. 严禁编造实测数据、工程案例、设备型号。
 """
 
 
@@ -608,10 +612,10 @@ class DisclosureGenerator:
         user_prompt = self._build_base_prompt(idea, title, fields,
                                               rag_context, suggestions,
                                               graph_context=getattr(self, "_graph_ref", ""))
-        user_prompt += "\n\n请撰写完整的技术交底书。"
+        user_prompt += "\n\n请撰写完整的技术交底书（确保到结尾都完整，不要中途停止）。"
         logger.info("[回退] 单次 LLM 生成完整交底书...")
         result = self.llm.chat(SINGLE_SHOT_SYSTEM, user_prompt,
-                               max_tokens=8192, temperature=0.7)
+                               max_tokens=16000, temperature=0.7)
         logger.info(f"[回退] 单次生成完成，{len(result)} 字")
         return result
 
