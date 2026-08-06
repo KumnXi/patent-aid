@@ -1,6 +1,6 @@
 ---
 name: compliance-checker
-description: 专利文件合规性检查工具 - 检查权利要求格式、术语一致性、引用关系等
+description: 专利文件合规性检查工具 - 检查权利要求格式、术语一致性、引用关系等。use when 用户要求"检查专利文件合规性""审查权利要求格式"或交底书生成后需要格式校验（代码侧校验另见 src/core/claim_validator.py）
 user_invocable: true
 ---
 

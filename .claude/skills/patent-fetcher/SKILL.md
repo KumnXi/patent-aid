@@ -1,12 +1,17 @@
 ---
 name: patent-fetcher
-description: 从Patenthub API自动获取电力领域专利，填充参考专利库
+description: 获取/检索电力领域专利全文填充参考专利库。use when 用户要求"获取某专利""搜索某领域专利""补充参考专利库"，或需要专利全文作为撰写依据
 user_invocable: true
 ---
 
 # 专利获取器
 
-从Patenthub API自动检索和下载电力领域专利，用于充实参考专利库。
+获取电力领域专利全文，用于充实参考专利库（`data/reference_patents/`）。
+
+> **数据源现状**：项目主爬取通道已转向 **Google Patents**（`src/api/google_patents.py`，需 Clash 代理）
+> 和 **Firecrawl 备用通道**（`src/api/firecrawl.py`），批量抓取走 `scripts/fast_crawl.py` /
+> `scripts/ipc_discovery.py`。本 skill 基于 Patenthub API（`src/api/patenthub.py`），
+> 仅在 Patenthub 可用时有效，免费额度有限（202 状态码 = 超限）。
 
 ## 使用方式
 

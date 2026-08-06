@@ -11,12 +11,12 @@
 | 🚀 一键生成流水线 | `scripts/generate_patent.py`：想法 → 标准专利格式 Word，全自动 |
 | 📝 标准专利格式 | 发明名称→摘要→权利要求书→说明书（技术领域/背景技术/发明内容/附图说明/具体实施方式） |
 | 🧮 原生可编辑公式 | LaTeX → Word 原生 OMML 公式（无需 MathType/插件，可编辑） |
-| 🖼️ 说明书附图自动生成 | 附图说明的 Mermaid 流程图 → 专利风格框图插入 Word |
+| 🖼️ 说明书附图自动生成 | 附图说明的 Mermaid 流程图 → Graphviz dot 引擎自动布局（300dpi）→ 专利风格框图插入 Word |
 | 🛡️ 防无中生有 | 5 类检查 + 生成后自动修复（删实验表述/量化改定性/删编造专利号） |
 | ⚖️ 权利要求格式校验 | 编号/完整性/特征段/引用格式/存在性/顺序 6 项自动校验 |
 | 🔐 历史加密存储 | 交底书 Fernet AES 加密，密钥本地管理 |
 | 质量审查 | 9维度评分（含防编造 no-new-matter 校验） |
-| 专利数据采集 | 多源爬取（Google Patents / Patenthub / Firecrawl 备用） |
+| 专利数据采集 | 多源爬取（Google Patents 主通道 + Firecrawl 备用 + Patenthub 备用） |
 | 知识图谱 | 问题→方案→效果→技术→设备 多维关系图谱 |
 | RAG 检索 | TF-IDF + bge-m3 稠密向量 RRF 混合检索 |
 | Web 应用 | Flask + 单页前端，生成/审查/搜索/导出 |
@@ -195,9 +195,11 @@ python scripts/generate_patent.py "你的技术想法" \
 ## 常用命令
 
 ```bash
-python scripts/batch_quality_test.py   # 批量质量测试（10题）
-python scripts/ipc_discovery.py 3      # IPC领域专利发现
-python scripts/fast_crawl.py           # 并发爬取专利全文
+python scripts/batch_quality_test.py       # 批量质量测试（10题）
+python scripts/ipc_discovery.py 3          # IPC领域专利发现
+python scripts/fast_crawl.py               # 并发爬取专利全文
+python scripts/firecrawl_discover.py --query "管道检测 专利"  # Firecrawl 领域发现
+python scripts/db_quality.py               # 数据库质量评分
 ```
 
 更多脚本见 [scripts/README.md](scripts/README.md)。
@@ -225,14 +227,33 @@ engine.suggest_innovation("虚拟电厂调频")   # 创新方向建议
 engine.review_quality(disclosure, idea)    # 独立质量审查
 ```
 
+## Skills 使用（Claude Code）
+
+项目提供 6 个 Claude Code Skills（`.claude/skills/`），按"想法→交底书→专利"两阶段划分：
+
+| Skill | 阶段 | 用途 | 调用 |
+|-------|------|------|------|
+| `/idea-to-disclosure` | 想法→交底书 | **核心流程**：从技术想法一键生成标准交底书 | `/idea-to-disclosure 想法...` |
+| `/patent-writer` | 交底书→专利 | 从交底书撰写权利要求书+说明书+摘要 | `/patent-writer` |
+| `/compliance-checker` | 交底书→专利 | 专利文件合规性检查 | `/compliance-checker` |
+| `/patent-supervisor` | 交底书→专利 | 撰写质量监督（方向守护/防编造） | `/patent-supervisor` |
+| `/patent-orchestrator` | 交底书→专利 | 编排三个角色驱动完整撰写流程 | `/patent-orchestrator` |
+| `/patent-fetcher` | 数据支撑 | 获取专利全文填充参考专利库 | `/patent-fetcher CN号` |
+
+> 项目核心目标是**想法→交底书**（`/idea-to-disclosure`）。"交底书→专利"的 skills 作为第二阶段保留。
+>
+> 每个 skill 由 `.claude/skills/<name>/SKILL.md` 定义（YAML frontmatter 含 `name`/`description`，按需加载）。
+
 ## 项目结构
 
 ```
 专利撰写助手/
+├── CLAUDE.md                   # 项目协作约定（环境/命令/安全红线）
 ├── app.py                      # Flask Web 应用入口（端口5000）
 │
 ├── config/                     # 配置文件
-│   ├── api_config.json         # API密钥和代理配置（不入库）
+│   ├── api_config.example.json # API密钥配置模板（复制为 api_config.json）
+│   ├── api_config.json         # 真实API密钥和代理配置（不入库）
 │   ├── terminology/            # 术语规范库（电力/保护/可再生能源等）
 │   ├── patent_law/             # 专利法条/常见驳回理由
 │   ├── effect_descriptions/    # 技术效果量化描述模板
@@ -241,42 +262,53 @@ engine.review_quality(disclosure, idea)    # 独立质量审查
 ├── data/                       # 数据目录
 │   ├── patent_database/        # 专利数据库（核心，879篇）
 │   │   ├── index.json          # 主索引（IPC为列表格式，858篇含摘要）
-│   │   ├── index_backup_*.json # 治理前自动备份
 │   │   └── quality_report.json # 数据质量报告
 │   ├── knowledge_graph/        # 知识图谱持久化
 │   ├── rag_index/              # RAG索引（含 index_meta.json 增量标记）
-│   ├── disclosure_history/     # 交底书生成历史（自动保存 .md + .json）
-│   ├── patent_pdfs/            # 专利PDF文件
-│   └── reference_patents/      # 人工标注的参考专利
+│   ├── disclosure_history/     # 交底书生成历史（加密，不入库）
+│   ├── knowledge_base/         # Firecrawl 抓取的论文/报告/综述
+│   ├── reference_patents/      # 人工标注的参考专利
+│   └── target_patents_firecrawl.json  # Firecrawl 发现的专利号清单
 │
 ├── src/                        # 核心源码（详见 docs/modules.md）
-│   ├── api/                    # 数据源接口（google_patents/patenthub/multi_source）
+│   ├── api/                    # 数据源接口（google_patents/patenthub/firecrawl/multi_source）
 │   ├── core/                   # 分析引擎
 │   │   ├── __init__.py         # PatentInnovationEngine 统一入口
 │   │   ├── disclosure_generator.py # 三阶段交底书生成器
-│   │   ├── quality_reviewer.py # 质量审查（8维度）
+│   │   ├── quality_reviewer.py # 质量审查（9维度含防编造）
 │   │   ├── llm_client.py       # 通用LLM客户端（重试/退避/代理）
-│   │   ├── rag_engine.py       # RAG检索（增量索引）
+│   │   ├── embedding_client.py # 硅基流动 bge-m3 稠密向量（混合检索）
+│   │   ├── claim_validator.py  # 权利要求格式校验（专利法细则）
+│   │   ├── data_authenticity_checker.py # 防无中生有自动修复
+│   │   ├── rag_engine.py       # RAG检索（增量索引，TF-IDF+稠密RRF）
 │   │   └── ...                 # 图谱/创新挖掘/权利要求/术语/数据库加载
 │   ├── parsers/                # 文本解析器（权利要求树/说明书分段）
-│   └── utils/                  # 工具（logger统一日志/history生成历史/text_utils）
+│   └── utils/                  # 工具（word_exporter/diagram_generator/history/math_omml/logger）
 │
 ├── scripts/                    # 运行脚本（详见 scripts/README.md）
-│   ├── slow_crawl.py           # 定向批量爬取（电力+管道）
-│   ├── daily_crawl.py          # 每日增量爬取
-│   ├── db_maintain.py          # 数据库治理（规范化/去重）
+│   ├── generate_patent.py      # 一键生成交底书（核心入口）
 │   ├── run_tests.py            # 自动化测试套件（22项）
+│   ├── fast_crawl.py           # 并发快速爬取
+│   ├── slow_crawl.py           # 定向批量爬取
+│   ├── daily_crawl.py          # 每日增量爬取
+│   ├── ipc_discovery.py        # IPC 领域专利发现
+│   ├── firecrawl_discover.py   # Firecrawl 领域发现
+│   ├── db_maintain.py          # 数据库治理（规范化/去重）
+│   ├── db_quality.py           # 数据库质量评分
 │   ├── batch_quality_test.py   # 批量质量测试（10题）
 │   └── build_analysis.py       # 重建知识图谱/RAG索引
 │
 ├── templates/                  # 前端页面 + 撰写模板
 │   ├── index.html              # Web应用单页前端
 │   ├── specification_template.md   # 说明书模板
-│   └── claims_template.md          # 权利要求模板
+│   ├── claims_template.md          # 权利要求模板
+│   ├── data_authenticity_guide.md  # 防编造检查指南
+│   └── electrical_power_templates.md  # 电力领域模板
 │
+├── .claude/skills/             # Claude Code Skills（详见下方"Skills 使用"）
 ├── logs/                       # 运行日志（app.log 轮转保留3份）
 ├── docs/                       # 项目文档（architecture/modules）
-└── output/                     # 下载报告等输出
+└── output/                     # 生成结果/测试输出
 ```
 
 ## 交底书生成流程
@@ -402,9 +434,11 @@ engine.review_quality(disclosure, idea)    # 独立质量审查
 
 | 文档 | 内容 |
 |------|------|
+| [CLAUDE.md](CLAUDE.md) | 项目协作约定（环境/常用命令/安全红线/架构约束） |
 | [docs/architecture.md](docs/architecture.md) | 系统分层架构、设计决策、扩展方向 |
 | [docs/modules.md](docs/modules.md) | src/ 各模块类和函数说明 |
 | [scripts/README.md](scripts/README.md) | 所有脚本的用法和参数 |
+| [.claude/skills/](.claude/skills/) | 6 个 Claude Code Skills（核心 `/idea-to-disclosure`） |
 
 ## 技术栈
 

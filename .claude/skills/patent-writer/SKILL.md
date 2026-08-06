@@ -1,6 +1,6 @@
 ---
 name: patent-writer
-description: AI辅助专利撰写工具 - 从技术交底书生成完整中国专利申请文件（权利要求书+说明书+摘要）
+description: AI辅助专利撰写工具 - 从技术交底书生成完整中国专利申请文件（权利要求书+说明书+摘要）。use when 用户手上有技术交底书并需要撰写申请文件的具体章节，或要求生成权利要求/说明书（注意：仅有技术想法时应走 idea-to-disclosure 生成交底书）
 user_invocable: true
 ---
 
