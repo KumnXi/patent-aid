@@ -10,20 +10,35 @@ D:/Anaconda3/envs/mathmodel/python.exe
 cd "d:\Jupyter code\专利撰写助手"
 ```
 
-## 核心脚本
+## 核心脚本（按用途分组）
+
+### 🚀 生成与测试
 
 | 脚本 | 功能 | 运行方式 |
 |------|------|----------|
-| `slow_crawl.py` | 定向批量爬取（电力+管道方向） | 手动，约25分钟/100篇 |
-| `fast_crawl.py` | 并发快速爬取（4线程+1s节流） | 手动，约2分钟/100篇 |
-| `daily_crawl.py` | 每日增量爬取（Patenthub搜索+Google全文） | 定时任务/手动 |
-| `db_maintain.py` | 数据库治理（规范化/去重/质量报告） | 爬取后按需 |
-| `build_analysis.py` | 重建知识图谱 + RAG索引 + 创新模式 | 数据更新后 |
-| `db_quality.py` | 数据库质量评分 | 按需 |
-| `bigquery_patents.py` | BigQuery批量导入（备用） | 额度重置后 |
-| `run_tests.py` | 自动化测试套件（22项，含多领域生成验证） | 按需 |
-| `batch_quality_test.py` | 批量质量测试（10题多领域，Web批量测试同款） | 按需 |
+| `generate_patent.py` | **一键生成交底书**（三阶段 LLM → 防编造 → 权利要求校验 → Word） | 手动，5-8分钟 |
+| `run_tests.py` | 自动化测试套件（22项，含多领域生成验证） | 按需，10-15分钟（真实调 LLM） |
+| `batch_quality_test.py` | 批量质量测试（10题多领域，Web批量测试同款） | 按需，约30分钟 |
 | `runner.py` | 通用启动器（行缓冲/超时保护，被其他脚本导入） | 不单独运行 |
+
+### 🔍 专利发现与爬取
+
+| 脚本 | 功能 | 运行方式 |
+|------|------|----------|
+| `fast_crawl.py` | 并发快速爬取（4线程+1s节流） | 手动，约2分钟/100篇 |
+| `slow_crawl.py` | 定向批量爬取（电力+管道方向） | 手动，约25分钟/100篇 |
+| `daily_crawl.py` | 每日增量爬取（Patenthub搜索+Google全文） | 定时任务/手动 |
+| `ipc_discovery.py` | IPC 分类号领域发现（生成待爬专利清单） | 手动 |
+| `firecrawl_discover.py` | Firecrawl 领域发现（搜索专利+抓取论文/报告） | 手动 |
+
+### 🗄️ 数据维护
+
+| 脚本 | 功能 | 运行方式 |
+|------|------|----------|
+| `db_maintain.py` | 数据库治理（规范化/去重/质量报告） | 爬取后按需 |
+| `db_quality.py` | 数据库质量评分 | 按需 |
+| `build_analysis.py` | 重建知识图谱 + RAG索引 + 创新模式 | 数据更新后 |
+| `bigquery_patents.py` | BigQuery批量导入（备用） | 额度重置后 |
 
 ## 详细说明
 
@@ -71,6 +86,39 @@ D:/Anaconda3/envs/mathmodel/python.exe scripts/daily_crawl.py
 
 ---
 
+### ipc_discovery.py — IPC 领域发现
+
+用 Google Patents 的 IPC 检索做领域全量发现（替代 CNIPA FTP 的"按 IPC 圈定"功能）：
+
+```bash
+# [每IPC页数] 可选，默认 300 条/IPC
+D:/Anaconda3/envs/mathmodel/python.exe scripts/ipc_discovery.py 3
+```
+
+1. 对每个领域 IPC 分页检索中国专利
+2. 合并去重 → 领域目标专利清单
+3. 与本地库对比，报告"已有 vs 新增"
+4. 目标清单保存到 `data/target_patents.json`，可直接喂给 `fast_crawl.py` 抓全文
+
+---
+
+### firecrawl_discover.py — Firecrawl 领域发现
+
+Firecrawl 的 search 发现能力用于**发现**新专利/论文/报告（Google Patents 详情页对
+Firecrawl 有 JS 反爬，所以全文仍用 `fast_crawl.py` 抓取）：
+
+```bash
+# 单组关键词
+D:/Anaconda3/envs/mathmodel/python.exe scripts/firecrawl_discover.py --query "管道检测 专利" --limit 10 --fetch-docs
+
+# 默认多组关键词（管道检测 + 电力 + 海底管道 + 燃气 + 电缆隧道）
+D:/Anaconda3/envs/mathmodel/python.exe scripts/firecrawl_discover.py
+```
+
+产出：`data/target_patents_firecrawl.json`（专利号清单）+ `data/knowledge_base/`（论文/报告）。
+
+---
+
 ### db_maintain.py — 数据库治理
 
 对 `data/patent_database/index.json` 做字段规范化、去重和质量统计。运行前会自动备份建议（先手动备份 index.json）。
@@ -95,6 +143,16 @@ D:/Anaconda3/envs/mathmodel/python.exe scripts/db_maintain.py --remove-similar
 6. 标题近似重复检测报告（输出到 quality_report.json）
 
 **输出**：`data/patent_database/quality_report.json`（覆盖率/IPC分布/年份分布/申请人TOP20）
+
+---
+
+### db_quality.py — 数据库质量评分
+
+对 `data/patent_database/index.json` 做去重检测 + 文本质量打分（完整性/清晰度/长度）。
+
+```bash
+D:/Anaconda3/envs/mathmodel/python.exe scripts/db_quality.py
+```
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: patent-orchestrator
-description: 专利撰写流程编排器 - 协调patent-writer、compliance-checker、patent-supervisor三个角色，驱动完整撰写流程
+description: 专利撰写流程编排器 - 协调patent-writer、compliance-checker、patent-supervisor三个角色，驱动"交底书→专利"完整撰写流程。use when 用户手上有技术交底书并要求生成完整专利申请文件（权利要求书+说明书+摘要），进入撰写阶段
 user_invocable: true
 ---
 

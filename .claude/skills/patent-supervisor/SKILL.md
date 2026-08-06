@@ -1,6 +1,6 @@
 ---
 name: patent-supervisor
-description: 专利撰写监督官 - 监控工作进展、审查质量、确保各阶段达标后才能进入下一阶段
+description: 专利撰写监督官 - 监控工作进展、审查质量、确保各阶段达标后才能进入下一阶段。use when 用户要求"监督撰写进度""审查当前专利文件质量"或编写流程中需要阶段质量把关（方向守护、防AI编造数据）
 user_invocable: true
 ---
 
