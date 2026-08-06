@@ -32,10 +32,13 @@ def parse_claims(text: str) -> List[Dict]:
                   text, re.DOTALL)
     section = m.group(1) if m else text
 
-    matches = list(re.finditer(r"^\s*(\d+)[.、]\s*", section, re.MULTILINE))
+    # 兼容标准编号 "1. " 与 "**权利要求1.**" 加粗格式
+    matches = list(re.finditer(
+        r"(?:\*\*)?权利要求?\s*(\d+)\s*[.、]?\s*\*\*?|^\s*(\d+)\s*[.、]\s*",
+        section, re.MULTILINE))
     claims = []
     for i, mm in enumerate(matches):
-        num = int(mm.group(1))
+        num = int(mm.group(1) or mm.group(2))
         start = mm.end()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(section)
         body = section[start:end].strip()
