@@ -1,18 +1,18 @@
-"""Mermaid 流程图 → matplotlib 专利风格附图渲染
+"""Mermaid 流程图 → 专利风格附图渲染
 
-从交底书附图说明中的 ```mermaid 代码块，解析 flowchart 并用 matplotlib
-渲染为专利附图（PNG）。支持中文节点标签、带标签边、换行文本。
+从交底书附图说明中的 ```mermaid 代码块，解析 flowchart 并渲染为专利附图（PNG）。
 
-核心修复（v2）：
-- 箭头从框边缘到框边缘（不再从中心到中心，箭头不会被框盖住）
-- 动态节点尺寸 + 大幅增加间距（框不再重叠）
-- 渲染顺序：先画框 → 再画箭头（箭头完整可见）
+渲染引擎（v3，升级自调研）：
+- **首选 Graphviz `dot` 引擎**：自动节点避让、最小化连线交叉、专业箭头路由
+  （业界标准布局，解决手写布局的节点重叠/连线交叉问题）
+- **回退 matplotlib**：Graphviz 不可用或渲染失败时，用自绘渲染（中文可靠）
 
 支持语法（简化 flowchart）：
     flowchart TD/LR/BT/RL
     A[节点文本] --> B[节点文本]
     A{判断节点} -->|是| B[处理]
     A -->|标签| C
+    A -- 标签 --> C      （双短横内嵌标签，Mermaid 另一写法）
     A[第一行<br/>第二行] --> B
 
 使用：
@@ -21,7 +21,12 @@
 """
 
 import math
+import os
 import re
+import shutil
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -63,7 +68,7 @@ def parse_mermaid(text: str) -> Optional[Dict]:
             direction = m.group(1).upper()
             continue
 
-        # 带标签边：A -->|标签| B  或  A[文本] -->|标签| B[文本]  或  A{文本} -->|标签| B
+        # 带标签边（管道式）：A -->|标签| B  或  A[文本] -->|标签| B[文本]  或  A{文本} -->|标签| B
         m = re.match(
             r"(\w+)" + _NODE_PATTERN + r"?\s*-+\>+\|([^|]+)\|\s*(\w+)" + _NODE_PATTERN + r"?",
             line)
@@ -77,6 +82,28 @@ def parse_mermaid(text: str) -> Optional[Dict]:
             t_shape = "diamond" if m.group(7) else "box"
 
             edges.append((f_id, t_id, edge_label))
+            if f_label:
+                nodes[f_id] = f_label
+                shapes[f_id] = f_shape
+            if t_label:
+                nodes[t_id] = t_label
+                shapes[t_id] = t_shape
+            continue
+
+        # 带标签边（双短横内嵌）：A -- 标签 --> B（Mermaid 另一写法）
+        m = re.match(
+            r"(\w+)" + _NODE_PATTERN + r"?\s*--\s*([^>]+?)\s*-->\s*(\w+)" + _NODE_PATTERN + r"?",
+            line)
+        if m:
+            f_id = m.group(1)
+            f_label = m.group(2) or m.group(3)
+            f_shape = "diamond" if m.group(3) else "box"
+            edge_label = m.group(4).strip()
+            t_id = m.group(5)
+            t_label = m.group(6) or m.group(7)
+            t_shape = "diamond" if m.group(7) else "box"
+
+            edges.append((f_id, t_id, edge_label or None))
             if f_label:
                 nodes[f_id] = f_label
                 shapes[f_id] = f_shape
@@ -309,6 +336,155 @@ def _box_edge_point(cx: float, cy: float,
 
 
 # ──────────────────────────────────────────────
+#  Graphviz 渲染（首选，v3 升级）
+# ──────────────────────────────────────────────
+
+# 常见 Graphviz dot 二进制位置（Windows 优先，兼容 POSIX）
+_DOT_CANDIDATES = [
+    "dot",  # PATH 中的 dot（类 Unix）
+    r"C:\Program Files\Graphviz\bin\dot.exe",
+    r"C:\Program Files (x86)\Graphviz\bin\dot.exe",
+]
+
+
+def _find_dot_binary() -> Optional[str]:
+    """定位 Graphviz dot 可执行文件
+
+    查找顺序：
+    1. 环境变量 GRAPHVIZ_DOT（用户显式指定）
+    2. shutil.which("dot")（PATH 中有）
+    3. Windows 常见安装路径
+
+    Returns:
+        dot 可执行文件路径，未找到返回 None
+    """
+    # 1. 环境变量显式指定
+    env = os.environ.get("GRAPHVIZ_DOT", "").strip()
+    if env and Path(env).exists():
+        return env
+
+    # 2. PATH
+    found = shutil.which("dot")
+    if found:
+        return found
+
+    # 3. Windows 常见路径
+    for cand in _DOT_CANDIDATES:
+        if Path(cand).exists():
+            return cand
+
+    # 4. conda 环境 Library/bin
+    for p in sys.path:
+        if p and p.lower().endswith(("site-packages", "lib")):
+            root = Path(p).parent.parent
+            for cand in (root / "Library" / "bin" / "dot.exe",
+                         root / "bin" / "dot"):
+                if cand.exists():
+                    return str(cand)
+    return None
+
+
+def _escape_dot_label(label: str) -> str:
+    """转义 DOT label 字符串（引号、反斜杠、换行）"""
+    if label is None:
+        return ""
+    # <br/> → \n 换行
+    label = label.replace("<br/>", "\n").replace("<br>", "\n")
+    return (label.replace("\\", "\\\\")
+                .replace('"', '\\"')
+                .replace("\n", "\\n"))
+
+
+def _build_dot(diagram: Dict, fontsize: int = 14) -> str:
+    """把 parse_mermaid 结果转成 DOT 图描述字符串
+
+    Args:
+        diagram: parse_mermaid() 输出
+        fontsize: 节点字号（pt）
+
+    Returns:
+        DOT 文本
+    """
+    direction = diagram["direction"]
+    nodes = diagram["nodes"]
+    edges = diagram["edges"]
+    shapes = diagram.get("shapes", {})
+
+    # 方向映射：Mermaid TD→dot TB（top-bottom），LR→LR
+    rankdir = "TB" if direction in ("TD", "BT") else "LR"
+
+    lines = [f"digraph G {{"]
+    lines.append(f"  rankdir={rankdir};")
+    lines.append(f"  nodesep=0.7;")
+    lines.append(f"  ranksep=0.9;")
+    lines.append(
+        f'  node [shape=box, fontname="SimHei", fontsize={fontsize}, '
+        f'style="filled", fillcolor="white", color="#333333", '
+        f'margin="0.25,0.12"];')
+    lines.append(
+        f'  edge [fontname="SimHei", fontsize={max(10, fontsize - 3)}, '
+        f'color="#333333", arrowsize=0.9];')
+
+    # 节点定义
+    for nid, label in nodes.items():
+        shape = "diamond" if shapes.get(nid) == "diamond" else "box"
+        esc = _escape_dot_label(label)
+        lines.append(f'  {nid} [label="{esc}", shape={shape}];')
+
+    # 边定义
+    for f_id, t_id, edge_label in edges:
+        if f_id not in nodes or t_id not in nodes:
+            continue
+        if edge_label:
+            esc = _escape_dot_label(edge_label)
+            lines.append(f'  {f_id} -> {t_id} [label="{esc}"];')
+        else:
+            lines.append(f'  {f_id} -> {t_id};')
+
+    lines.append("}")
+    return "\n".join(lines)
+
+
+def _render_graphviz(diagram: Dict, out_path: str,
+                     dpi: int = 300) -> bool:
+    """用 Graphviz dot 引擎渲染流程图
+
+    Args:
+        diagram: parse_mermaid() 输出
+        out_path: 输出 PNG 路径
+        dpi: 输出分辨率（专利要求 ≥300）
+
+    Returns:
+        成功返回 True，失败返回 False
+    """
+    dot_bin = _find_dot_binary()
+    if not dot_bin:
+        return False
+
+    try:
+        dot_text = _build_dot(diagram)
+        with tempfile.TemporaryDirectory() as tmp:
+            dot_path = Path(tmp) / "diagram.dot"
+            dot_path.write_text(dot_text, encoding="utf-8")
+            result = subprocess.run(
+                [dot_bin, "-Tpng", f"-Gdpi={dpi}", str(dot_path)],
+                capture_output=True, timeout=60)
+            if result.returncode != 0:
+                err = result.stderr.decode("utf-8", errors="replace")
+                # 字体缺失等警告：graphviz 有时返回 0 但输出空
+                if not result.stdout:
+                    print(f"  Graphviz 渲染失败: {err.strip()[:200]}")
+                    return False
+            if not result.stdout:
+                return False
+            Path(out_path).write_bytes(result.stdout)
+            return True
+    except (subprocess.TimeoutExpired, OSError) as e:
+        print(f"  Graphviz 渲染异常: {e}")
+        return False
+
+
+# ──────────────────────────────────────────────
 #  渲染
 # ──────────────────────────────────────────────
 
@@ -491,10 +667,14 @@ def mermaid_to_png(mermaid_text: str, out_path: str,
                    fontname: str = "SimHei") -> Optional[str]:
     """Mermaid flowchart → PNG
 
+    渲染顺序（v3）：
+    1. Graphviz `dot` 引擎（自动布局/路由，输出 300dpi）
+    2. Graphviz 不可用或失败 → 回退 matplotlib 自绘
+
     Args:
         mermaid_text: Mermaid 代码块内容
         out_path: 输出 PNG 路径
-        fontname: 中文字体（默认 SimHei，备选 Microsoft YaHei）
+        fontname: 中文字体（matplotlib 回退路径用，默认 SimHei）
 
     Returns:
         保存路径，失败返回 None
@@ -503,11 +683,21 @@ def mermaid_to_png(mermaid_text: str, out_path: str,
     if not diagram:
         print(f"  流程图解析失败，无法识别节点/边")
         return None
+
+    # 首选：Graphviz（若已安装）
+    if _find_dot_binary():
+        try:
+            if _render_graphviz(diagram, out_path, dpi=300):
+                return out_path if Path(out_path).exists() else None
+        except Exception as e:
+            print(f"  Graphviz 渲染失败，回退 matplotlib: {e}")
+    else:
+        print("  [提示] 未检测到 Graphviz，使用 matplotlib 渲染")
+
+    # 回退：matplotlib
     try:
         _render(diagram, out_path, fontname)
-        if Path(out_path).exists():
-            return out_path
-        return None
+        return out_path if Path(out_path).exists() else None
     except Exception as e:
         print(f"  流程图渲染失败: {e}")
         return None
