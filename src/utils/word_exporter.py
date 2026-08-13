@@ -99,6 +99,28 @@ def _set_run_font(run, name_cn: str = "宋体", size_pt: int = 12,
     rfonts.set(qn("w:eastAsia"), name_cn)
 
 
+def _fit_image_size(img_path: str, max_width_in: float = 6.0,
+                    max_height_in: float = 9.0) -> tuple:
+    """按页面可容纳范围自适应缩放图片，返回 (width_in, height_in)
+
+    专利附图（mermaid 流程图）多为竖长条（宽高比 0.3-0.6），若固定 6in 宽插入，
+    高度会被撑到 19-20in，远超 A4 页面可用高度（约 10.1in），一页放不下。
+    此处读图片实际宽高比，约束高度不超过 max_height_in，宽度不超过 max_width_in，
+    保证整图落在单页内。PIL 不可用或读图失败时回退固定宽度（返回 max_width_in, None）。
+    """
+    try:
+        from PIL import Image
+        with Image.open(img_path) as im:
+            w_px, h_px = im.size
+        ratio = h_px / w_px
+        # 高度优先约束：竖图按高度缩放，横图按宽度缩放
+        h_in = min(max_height_in, max_width_in * ratio)
+        w_in = h_in / ratio
+        return w_in, h_in
+    except Exception:
+        return max_width_in, None
+
+
 def _add_omml_formula(p, latex: str) -> bool:
     """尝试将 LaTeX 公式作为 Word 原生公式（OMML）插入段落
 
@@ -219,14 +241,17 @@ def export_disclosure_to_word(disclosure: str, output_path: str,
             i += 1
             continue
 
-        # Markdown 标题 → 加粗段落
-        if stripped.startswith("## "):
-            heading = stripped[3:].strip()
+        # Markdown 标题 → 加粗段落（支持 # ~ #### 层级，字号随层级递减）
+        md_heading = re.match(r"^(#{1,4})\s+(.+)$", stripped)
+        if md_heading:
+            level = len(md_heading.group(1))
+            heading = md_heading.group(2).strip()
             p = doc.add_paragraph()
             p.paragraph_format.space_before = Pt(12)
             p.paragraph_format.space_after = Pt(6)
             run = p.add_run(heading)
-            _set_run_font(run, size_pt=13, bold=True)
+            size = {1: 14, 2: 13, 3: 12, 4: 12}.get(level, 12)
+            _set_run_font(run, size_pt=size, bold=True)
             i += 1
             continue
 
@@ -247,8 +272,14 @@ def export_disclosure_to_word(disclosure: str, output_path: str,
                     p = doc.add_paragraph()
                     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     from docx.shared import Inches
-                    # 可用页宽 170mm ≈ 6.7in；取 6.0 保证可读且不超页边
-                    p.add_run().add_picture(png, width=Inches(6.0))
+                    # 可用页宽 170mm ≈ 6.7in；取 6.0 保证可读且不超页边。
+                    # 竖长条流程图按页面可用高度（约 10.1in，留余量取 9.0）自适应缩放，
+                    # 避免固定 6in 宽导致高度 19-20in 一页放不下。
+                    w_in, h_in = _fit_image_size(png, max_width_in=6.0, max_height_in=9.0)
+                    if h_in is not None:
+                        p.add_run().add_picture(png, width=Inches(w_in), height=Inches(h_in))
+                    else:
+                        p.add_run().add_picture(png, width=Inches(6.0))
             continue
 
         # 跳过裸 LaTeX 定界符行（\[ \] 成对包裹的显示公式）

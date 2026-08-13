@@ -17,11 +17,23 @@ qwen-vl 看图 → 结构化质检报告（公式 / 附图 / 布局 / 乱码）�
 
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from src.api.vl_client import VLClient
 from src.utils.idea_vision import _parse_structured
+
+def _term_safe(text: str) -> str:
+    """终端编码安全：GBK 等窄编码控制台打印含组合字符（如 ε̇）会抛
+    UnicodeEncodeError，这里把 stdout 无法编码的字符替换为 '?'。
+    """
+    try:
+        enc = sys.stdout.encoding or "utf-8"
+        return text.encode(enc, errors="replace").decode(enc, errors="replace")
+    except Exception:
+        return text
+
 
 # 各平台 soffice 常见安装路径
 _SOFFICE_CANDIDATES = [
@@ -177,7 +189,7 @@ def inspect_disclosure(docx_path: str, max_pages: int = 0,
         # 终端摘要（压缩显示）
         if issues:
             brief = "; ".join(x.get("description", "")[:28] for x in issues[:3])
-            print(f"  P{i:02d} 检出 {len(issues)} 个问题: {brief}")
+            print(f"  P{i:02d} 检出 {len(issues)} 个问题: {_term_safe(brief)}")
         else:
             print(f"  P{i:02d} 正常")
 
