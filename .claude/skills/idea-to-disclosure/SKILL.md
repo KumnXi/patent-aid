@@ -42,11 +42,24 @@ D:/Anaconda3/envs/mathmodel/python.exe scripts/generate_patent.py "技术想法"
     --problems "现有技术不足" --out output/交底书.docx
 ```
 
+3b. **交付自查（可选，交付前建议跑）**：Word 导出后渲染回看显示质量（公式/附图/布局/乱码），由 VL 看图质检，避免"导出成功但渲染有问题"：
+
+```bash
+# 生成后直接自查；或对已有 docx 单独自查
+D:/Anaconda3/envs/mathmodel/python.exe scripts/generate_patent.py ... --selfcheck
+D:/Anaconda3/envs/mathmodel/python.exe scripts/selfcheck_disclosure.py output/交底书.docx
+```
+
+   - 原理：docx → LibreOffice 转 PDF → 逐页 PNG → qwen-vl 回看（见 `src/utils/disclosure_inspector.py`）
+   - 需 LibreOffice（`winget install --id TheDocumentFoundation.LibreOffice`）；未装时提示安装，不阻断生成
+   - 终端显示每页问题数；有 error 级问题建议修复后重新导出
+
 ## 输出检查（生成后核对）
 
 - 终端应显示：生成模式（llm_staged 为最优）、质检评分（>90 为好）、防无中生有修复数、权利要求校验摘要
 - Word 内含附图：mermaid 流程图经 Graphviz `dot` 渲染（300dpi），见 `src/utils/diagram_generator.py`
 - 生成历史已加密保存到 `data/disclosure_history/`（见 `src/utils/history.py`）
+- `--selfcheck` 后终端应显示每页自查结论（P01 正常 / 检出 N 个问题）
 
 ## 注意事项
 

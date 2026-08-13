@@ -3,6 +3,7 @@
 流水线：
     想法 → ①三阶段LLM生成 → ②防无中生有自动修复 → ③权利要求格式校验
          → ④保存历史(加密) → ⑤导出Word(原生公式+说明书附图)
+         → ⑥[可选 --selfcheck] 渲染回看（公式/附图/布局/乱码）
 
 产出：标准中国专利格式 Word（发明名称→摘要→权利要求书→说明书五段式），
       LaTeX公式为Word原生可编辑公式，附图说明自动生成专利风格图。
@@ -10,11 +11,13 @@
 用法：
     python scripts/generate_patent.py "技术想法" \
         [--title 发明名称] [--tech-field 技术领域] [--purpose 发明目的] \
-        [--core-method 核心方法] [--problems 现有问题] [--out 输出.docx]
+        [--core-method 核心方法] [--problems 现有问题] [--out 输出.docx] \
+        [--selfcheck]
 
 示例：
     python scripts/generate_patent.py "一种高温蒸汽管道缺陷评估方法" \
-        --tech-field "火力发电高温蒸汽管道检测" --out output/交底书.docx
+        --tech-field "火力发电高温蒸汽管道检测" --out output/交底书.docx \
+        --selfcheck
 """
 
 import argparse
@@ -39,6 +42,10 @@ def main():
     parser.add_argument("--core-method", default="", help="核心方法/技术路线")
     parser.add_argument("--problems", default="", help="现有技术问题")
     parser.add_argument("--out", default="", help="输出Word路径（默认 output/交底书.docx）")
+    parser.add_argument("--selfcheck", action="store_true",
+                        help="导出后自动渲染回看（docx→图→VL质检，需LibreOffice）")
+    parser.add_argument("--selfcheck-max-pages", type=int, default=0,
+                        help="自查时只查前N页（0=全部）")
     args = parser.parse_args()
 
     fields = {
@@ -80,6 +87,19 @@ def main():
     out_path = args.out or str(Path("output") / "交底书.docx")
     export_disclosure_to_word(disclosure, out_path, title=args.title or None)
 
+    # ⑥ 交付自查（可选）：docx → 渲染 → VL 回看
+    selfcheck_report = None
+    if args.selfcheck:
+        print("[5/6] 交付自查（渲染 + VL 回看）...")
+        from src.utils.disclosure_inspector import inspect_disclosure
+        selfcheck_report = inspect_disclosure(
+            out_path, max_pages=args.selfcheck_max_pages)
+        print(f"[6/6] 自查结论: {selfcheck_report.get('summary', 'N/A')}")
+        if selfcheck_report.get("error"):
+            print(f"  注意: {selfcheck_report['error']}")
+        elif selfcheck_report.get("error_count"):
+            print("  有 error 级问题，建议修复后重新导出。")
+
     # 报告
     print("[5/5] 完成")
     print("=" * 60)
@@ -89,6 +109,8 @@ def main():
     print(f"权利要求校验: {claim.get('summary', 'N/A')}")
     print(f"历史ID: {hid}")
     print(f"Word输出: {out_path} ({Path(out_path).stat().st_size} bytes)")
+    if selfcheck_report and not selfcheck_report.get("error"):
+        print(f"自查: {selfcheck_report['summary']}")
     print(f"总耗时: {time.time() - t0:.0f}s")
     print("=" * 60)
 
