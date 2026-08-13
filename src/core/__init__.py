@@ -320,7 +320,8 @@ class PatentInnovationEngine:
     # ═══════════════════════════════════════════════════════════════
 
     def generate_disclosure(self, idea: str, title: str = None,
-                            fields: dict = None, polish: bool = False) -> dict:
+                            fields: dict = None, polish: bool = False,
+                            progress_callback=None) -> dict:
         """根据想法生成技术交底书（三阶段：大纲→分章节→质检迭代）
 
         Args:
@@ -328,6 +329,8 @@ class PatentInnovationEngine:
             title: 发明名称（可选）
             fields: 结构化输入 {tech_field, purpose, core_method, problems}
             polish: 是否使用LLM二次润色（仅模板模式下生效）
+            progress_callback: 可选回调 progress_callback(stage, detail)，
+                生成过程中触发（context/outline/section/single/template）
 
         Returns:
             {"disclosure": str, "mode": "llm_staged"|"llm_single"|"template",
@@ -337,7 +340,8 @@ class PatentInnovationEngine:
             return {"disclosure": "错误：引擎未初始化", "mode": "error"}
 
         generator = DisclosureGenerator(self)
-        disclosure, mode = generator.generate(idea, title, fields)
+        disclosure, mode = generator.generate(idea, title, fields,
+                                              progress_callback=progress_callback)
         result = {"disclosure": disclosure, "mode": mode}
 
         # 阶段 3：分段模式自动质检迭代

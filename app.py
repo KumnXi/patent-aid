@@ -13,11 +13,17 @@
 import sys
 import json
 import logging
+import threading
+import uuid
+import time
 from pathlib import Path
 from datetime import datetime
 
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+# 产品版本号（随功能迭代递增）
+VERSION = "0.9.0"
 
 from flask import Flask, render_template, request, jsonify, send_file, Response
 
@@ -104,6 +110,7 @@ def api_status():
         stats = engine.get_statistics()
         return jsonify({
             "status": "ready",
+            "version": VERSION,
             "summary": engine.get_summary(),
             "stats": {
                 "patents": total,
@@ -143,10 +150,39 @@ def api_config_status():
     return jsonify(status)
 
 
+# ═══════════════════════════════════════════════════════════
+# 生成任务管理（后台线程，前端轮询进度）
+# ═══════════════════════════════════════════════════════════
+
+_GEN_TASKS = {}
+_GEN_TASK_MAX = 50
+_GEN_MAX_RUNNING = 3
+
+
+def _update_gen_task(task_id: str, stage: str, detail: str):
+    """生成进度回调：更新任务阶段信息"""
+    task = _GEN_TASKS.get(task_id)
+    if task:
+        task["stage"] = stage
+        task["detail"] = detail
+
+
+def _cleanup_gen_tasks():
+    """清理已完成/失败任务，保持总量上限"""
+    if len(_GEN_TASKS) > _GEN_TASK_MAX:
+        finished = [k for k, v in _GEN_TASKS.items()
+                    if v["status"] in ("done", "error")]
+        for k in finished[:len(_GEN_TASKS) - _GEN_TASK_MAX]:
+            _GEN_TASKS.pop(k, None)
+
+
 @app.route("/api/generate", methods=["POST"])
 def api_generate():
-    """生成技术交底书"""
-    data = request.get_json()
+    """生成技术交底书（后台线程执行，立即返回 task_id）
+
+    前端轮询 GET /api/task/<task_id> 获取阶段进度与最终结果。
+    """
+    data = request.get_json() or {}
     idea = data.get("idea", "").strip()
     title = data.get("title", "").strip() or None
     fields = {
@@ -163,48 +199,96 @@ def api_generate():
     if not engine:
         return jsonify({"error": "引擎初始化失败，请稍后重试"}), 500
 
-    try:
-        start_time = datetime.now()
-        result = engine.generate_disclosure(idea, title=title, fields=fields)
-        elapsed = (datetime.now() - start_time).total_seconds()
+    # 并发保护：同时生成的 LLM 任务过多时拒绝（避免限流）
+    running = sum(1 for t in _GEN_TASKS.values() if t["status"] == "running")
+    if running >= _GEN_MAX_RUNNING:
+        return jsonify({"error": "已有生成任务在进行中，请稍候再试"}), 429
 
-        disclosure = result["disclosure"]
-        mode = result["mode"]
-        quality_report = result.get("quality_report")
-        word_count = len(disclosure.replace(" ", "").replace("\n", ""))
+    task_id = uuid.uuid4().hex[:12]
+    _GEN_TASKS[task_id] = {
+        "status": "running", "stage": "queue", "detail": "任务已提交",
+        "result": None, "error": None, "created": time.time(),
+    }
 
-        # 保存生成历史
-        from src.utils.history import save_disclosure
+    def worker():
         try:
-            history_id = save_disclosure(
-                idea, disclosure, mode, title=title,
-                quality_report=quality_report
+            start_time = datetime.now()
+            result = engine.generate_disclosure(
+                idea, title=title, fields=fields,
+                progress_callback=lambda s, d: _update_gen_task(task_id, s, d)
             )
-        except Exception as e:
-            print(f"[历史保存] 失败: {e}")
-            history_id = None
+            elapsed = (datetime.now() - start_time).total_seconds()
 
-        resp = {
-            "success": True,
-            "disclosure": disclosure,
-            "mode": mode,
-            "history_id": history_id,
-            "stats": {
-                "word_count": word_count,
-                "section_count": disclosure.count("## "),
-                "elapsed_seconds": round(elapsed, 1),
+            disclosure = result["disclosure"]
+            mode = result["mode"]
+            quality_report = result.get("quality_report")
+            word_count = len(disclosure.replace(" ", "").replace("\n", ""))
+
+            # 保存生成历史
+            from src.utils.history import save_disclosure
+            try:
+                history_id = save_disclosure(
+                    idea, disclosure, mode, title=title,
+                    quality_report=quality_report
+                )
+            except Exception as e:
+                print(f"[历史保存] 失败: {e}")
+                history_id = None
+
+            resp = {
+                "success": True,
+                "disclosure": disclosure,
+                "mode": mode,
+                "history_id": history_id,
+                "stats": {
+                    "word_count": word_count,
+                    "section_count": disclosure.count("## "),
+                    "elapsed_seconds": round(elapsed, 1),
+                }
             }
-        }
-        if quality_report:
-            resp["quality_report"] = {
-                "total_score": quality_report.get("total_score"),
-                "grade": quality_report.get("grade"),
-                "dimensions": quality_report.get("dimensions"),
-            }
-        return jsonify(resp)
-    except Exception as e:
-        logging.getLogger("patent_assistant").error("API异常", exc_info=True)
-        return jsonify({"error": "生成失败，请稍后重试"}), 500
+            if quality_report:
+                resp["quality_report"] = {
+                    "total_score": quality_report.get("total_score"),
+                    "grade": quality_report.get("grade"),
+                    "dimensions": quality_report.get("dimensions"),
+                }
+            task = _GEN_TASKS.get(task_id)
+            if task:
+                task["status"] = "done"
+                task["result"] = resp
+                task["stage"] = "done"
+                task["detail"] = "生成完成"
+        except Exception as e:
+            logging.getLogger("patent_assistant").error("生成任务异常", exc_info=True)
+            task = _GEN_TASKS.get(task_id)
+            if task:
+                task["status"] = "error"
+                task["error"] = str(e) or "生成失败"
+                task["stage"] = "error"
+        finally:
+            _cleanup_gen_tasks()
+
+    threading.Thread(target=worker, daemon=True, name=f"gen-{task_id}").start()
+    return jsonify({"success": True, "task_id": task_id})
+
+
+@app.route("/api/task/<task_id>")
+def api_task(task_id):
+    """查询生成任务进度与结果"""
+    task = _GEN_TASKS.get(task_id)
+    if not task:
+        return jsonify({"error": "任务不存在或已过期"}), 404
+    resp = {
+        "task_id": task_id,
+        "status": task["status"],
+        "stage": task["stage"],
+        "detail": task["detail"],
+    }
+    if task["status"] == "done" and task["result"]:
+        resp["result"] = task["result"]
+    elif task["status"] == "error":
+        resp["error"] = task["error"]
+    return jsonify(resp)
 
 
 @app.route("/api/download", methods=["POST"])

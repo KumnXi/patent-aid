@@ -344,13 +344,16 @@ class DisclosureGenerator:
         return self.llm.is_available()
 
     def generate(self, idea: str, title: str = None,
-                 fields: Dict = None) -> Tuple[str, str]:
+                 fields: Dict = None,
+                 progress_callback=None) -> Tuple[str, str]:
         """生成技术交底书
 
         Args:
             idea: 技术想法描述
             title: 发明名称（可选）
             fields: 结构化输入字段 {tech_field, purpose, core_method, problems}
+            progress_callback: 可选回调 progress_callback(stage, detail)，
+                在生成各阶段触发（context/outline/section/single/template）
 
         Returns:
             (disclosure_text, mode) 元组，
@@ -360,7 +363,15 @@ class DisclosureGenerator:
         if not title:
             title = self._extract_title(idea)
 
+        def _report(stage, detail):
+            if progress_callback:
+                try:
+                    progress_callback(stage, detail)
+                except Exception:
+                    pass
+
         # 获取 RAG 上下文、知识图谱上下文和创新建议
+        _report("context", "检索相关专利与知识图谱")
         context = self.engine.generate_writing_context(idea)
         suggestions = self.engine.suggest_innovation(idea)
 
@@ -385,6 +396,7 @@ class DisclosureGenerator:
 
         # ── 阶段 1：大纲 ──
         logger.info("[阶段1] 规划交底书大纲...")
+        _report("outline", "规划交底书大纲")
         outline = None
         try:
             outline = self._plan_outline(idea, title, fields,
@@ -398,7 +410,8 @@ class DisclosureGenerator:
         if outline:
             try:
                 sections = self._generate_sections(
-                    idea, fields, outline, rag_backgrounds, rag_claims
+                    idea, fields, outline, rag_backgrounds, rag_claims,
+                    progress_callback=progress_callback
                 )
                 disclosure = self._assemble(sections)
                 logger.info(f"[阶段2] 分章节生成完成，全文 {len(disclosure)} 字")
@@ -407,6 +420,7 @@ class DisclosureGenerator:
                 logger.warning(f"[阶段2] 分章节生成失败: {e}，回退单次生成")
 
         # ── 二级回退：单次生成（带完整性校验，不完整则重试）──
+        _report("single", "单次生成全文")
         for attempt in range(2):
             try:
                 disclosure = self._generate_single_shot(
@@ -422,6 +436,7 @@ class DisclosureGenerator:
                 logger.warning(f"单次生成失败({e})，回退模板生成")
                 break
 
+        _report("template", "模板拼接生成")
         disclosure = self._generate_template(idea, title, fields, context, suggestions)
         return disclosure, "template"
 
@@ -509,7 +524,8 @@ class DisclosureGenerator:
     # ─── 阶段 2：分章节生成 ──────────────────────────────
 
     def _generate_sections(self, idea, fields, outline,
-                           rag_backgrounds, rag_claims) -> Dict[str, str]:
+                           rag_backgrounds, rag_claims,
+                           progress_callback=None) -> Dict[str, str]:
         """生成全部 4 组章节，返回 {group_key: text}"""
         # 缓存供质检迭代复用
         self._last_outline = outline
@@ -521,7 +537,14 @@ class DisclosureGenerator:
                                        fields, rag_backgrounds, None,
                                        graph_context=getattr(self, "_graph_ref", ""))
         self._last_base = base
-        for spec in GROUP_SPECS:
+        total = len(GROUP_SPECS)
+        for idx, spec in enumerate(GROUP_SPECS, start=1):
+            if progress_callback:
+                try:
+                    progress_callback("section",
+                                      f"撰写章节 {idx}/{total}（{spec['title']}）")
+                except Exception:
+                    pass
             preceding = self._preceding_summary(sections, spec["key"])
             sections[spec["key"]] = self._generate_one_group(
                 spec, idea, outline, preceding,
