@@ -235,6 +235,14 @@ def test_disclosure_no_fake_data():
         assert f not in disclosure, f"包含编造数据: {f}"
 
 
+@suite.test("合规审查报告随生成返回")
+def test_disclosure_compliance():
+    result = _get_disclosure()
+    assert "compliance_report" in result, "生成结果缺少合规审查报告"
+    report = result["compliance_report"]
+    assert "score" in report and "grade" in report, "合规报告结构不完整"
+
+
 @suite.test("生成历史保存与读取")
 def test_history():
     from src.utils.history import (save_disclosure, list_history,
@@ -268,6 +276,38 @@ def test_reports():
     assert "锟" not in report and "娴" not in report, "创新报告有乱码"
     report2 = suite.engine.get_claim_analysis_report()
     assert "锟" not in report2 and "娴" not in report2, "权利要求报告有乱码"
+
+# ─── 合规审查测试（compliance_checker，纯规则不调 LLM）─────────
+
+_COMPLIANCE_SAMPLE = """# 技术交底书
+## 一、发明名称
+一种管道检测机器人
+## 四、发明目的
+[0001] 现有技术中，管道检测机器人使用电线连接电闸，检测精度大幅改善。
+## 九、权利要求书（建议）
+1. 一种管道检测机器人，其特征在于，包括壳体、驱动模块，所述驱动模块驱动所述壳体在管道内移动。
+2. 根据权利要求99所述的管道检测机器人，其特征在于，还包括检测模块。
+"""
+
+
+@suite.test("合规审查检测禁用词/引用错误")
+def test_compliance_synthetic():
+    from src.core.compliance_checker import ComplianceChecker
+    report = ComplianceChecker().check(_COMPLIANCE_SAMPLE)
+    assert report["score"] < 100, "合成样例应检出问题"
+    assert "compliance_report" not in report  # check 顶层是报告本身
+    types = {i["type"] for i in report["issues"]}
+    assert "forbidden" in types, f"未检出禁用词: {types}"
+    assert "claims" in types, f"未检出权利要求引用错误: {types}"
+
+
+@suite.test("合规自动修复禁用词且不误伤")
+def test_compliance_autofix():
+    from src.core.compliance_checker import ComplianceChecker
+    result = ComplianceChecker().auto_fix(_COMPLIANCE_SAMPLE)
+    assert result["fixed_count"] > 0, "应修复禁用词"
+    assert "电线" not in result["fixed"] and "电闸" not in result["fixed"]
+    assert "权利要求" in result["fixed"], "自动修复误伤了正文"
 
 # ═══════════════════════════════════════════════════════
 # 运行

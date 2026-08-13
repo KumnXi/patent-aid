@@ -349,6 +349,21 @@ class PatentInnovationEngine:
         except Exception as e:
             print(f"[权利要求校验] 失败: {e}")
 
+        # 阶段 6：合规审查（禁用表述/摘要字数/引用关系/支持性/充分公开）
+        try:
+            from .compliance_checker import ComplianceChecker
+            compliance = ComplianceChecker(self.db_loader)
+            comp_report = compliance.check(result["disclosure"], idea)
+            if comp_report["issues"]:
+                fix_result = compliance.auto_fix(result["disclosure"])
+                if fix_result["fixed_count"] > 0:
+                    result["disclosure"] = fix_result["fixed"]
+                    comp_report = compliance.check(result["disclosure"], idea)
+                    result["compliance_fixed"] = fix_result
+            result["compliance_report"] = comp_report
+        except Exception as e:
+            print(f"[合规审查] 失败: {e}")
+
         return result
 
     def review_quality(self, disclosure: str, idea: str) -> dict:
