@@ -337,6 +337,52 @@ def test_idea_vision_parse():
     assert merged["title"] == "A", "已填字段被覆盖"
     assert merged["idea"] == "补充", "空字段未补充"
 
+# ─── CORE 论文检索测试（离线安全，不实际请求网络）─────────
+
+@suite.test("CORE客户端可用或降级")
+def test_core_client():
+    from src.api.paper_search import CoreClient
+    client = CoreClient()
+    assert isinstance(client.is_available(), bool), "is_available 应为布尔"
+    assert client.base_url, "缺少 base_url"
+    # 未配置 key 时 search 返回 []（不抛异常、不请求网络）
+    if not client.is_available():
+        assert client.search("pipeline inspection robot") == []
+
+@suite.test("CORE记录字段归一化加固")
+def test_core_normalize():
+    from src.api.paper_search import _normalize_paper
+    # 正常记录 → 统一字段
+    ok = _normalize_paper({
+        "id": "C123", "title": "  Pipeline Inspection Robot  ",
+        "abstract": "ab", "yearPublished": 2024,
+        "authors": [{"name": "Zhang"}, {"name": "Li"}],
+        "venue": {"name": "IEEE"}, "doi": "10.1/x",
+    })
+    assert ok["title"] == "Pipeline Inspection Robot", "标题未去空格"
+    assert ok["year"] == 2024 and ok["venue"] == "IEEE"
+    assert ok["authors"] == ["Zhang", "Li"]
+    # 缺 id / 空标题 → None（防御过滤）
+    assert _normalize_paper({"abstract": "x"}) is None
+    assert _normalize_paper({"id": 1, "title": "  "}) is None
+    # 作者/venue 结构异常 → 空值兜底
+    edge = _normalize_paper({"id": 2, "title": "T", "authors": None, "venue": None})
+    assert edge["authors"] == [] and edge["venue"] == "", "结构异常未兜底"
+
+# ─── 交付自查测试（disclosure_inspector，离线安全）─────────
+
+@suite.test("LibreOffice定位不崩溃")
+def test_inspector_soffice():
+    from src.utils.disclosure_inspector import find_soffice
+    soffice = find_soffice()
+    # 装了返回路径，没装返回 None，都不应抛异常
+    assert soffice is None or isinstance(soffice, str)
+
+@suite.test("渲染缺失文件优雅失败")
+def test_inspector_missing_file():
+    from src.utils.disclosure_inspector import render_docx_to_pngs
+    assert render_docx_to_pngs("不存在.docx") == [], "应返回空列表"
+
 # ═══════════════════════════════════════════════════════
 # 运行
 # ═══════════════════════════════════════════════════════

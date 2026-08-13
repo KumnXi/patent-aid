@@ -149,15 +149,26 @@ class RAGEngine:
             dtype=np.float32,
         ) if self.chunks else np.array([], dtype=np.float32)
 
-        # TF-IDF 向量化
+        # TF-IDF 向量化（+ 可选的稠密向量）
+        self._fit_vectors()
+
+    def _fit_vectors(self) -> None:
+        """对当前全部文档块重建 TF-IDF 向量（含可选的稠密向量）
+
+        build_index 与 add_papers 共用：追加论文块后需整体重算，
+        否则新块的 TF-IDF 特征空间与旧索引不一致。
+        """
         self.dense_vectors = None
-        if self.chunks:
-            texts = [c.text for c in self.chunks]
-            try:
-                self.chunk_vectors = self.vectorizer.fit_transform(texts)
-                self.is_built = True
-            except ValueError:
-                self.is_built = False
+        if not self.chunks:
+            self.chunk_vectors = None
+            self.is_built = False
+            return
+        texts = [c.text for c in self.chunks]
+        try:
+            self.chunk_vectors = self.vectorizer.fit_transform(texts)
+            self.is_built = True
+        except ValueError:
+            self.is_built = False
 
         # 稠密向量（可选，需 embedding API；失败则回退纯 TF-IDF）
         if self.is_built and self.embedder.is_available():
@@ -172,6 +183,80 @@ class RAGEngine:
             except Exception as e:
                 print(f"  稠密向量计算失败，回退 TF-IDF 检索: {e}")
                 self.dense_vectors = None
+
+    def add_papers(self, paper_docs: List[Dict]) -> int:
+        """追加学术论文文档块到索引（source=core_paper），并重建向量
+
+        论文不塞进专利库（index.json 的 patents dict 不动），独立作为补充语料：
+        每篇论文生成"摘要块 + 标题块"，metadata.source="core_paper"，
+        检索结果可按 source 过滤。按 chunk_id 幂等去重，重复调用不重复添加。
+
+        Args:
+            paper_docs: [{id, title, abstract, authors, year, venue, doi}, ...]
+                        与 scripts/paper_discover.py 落库的 papers_index.json 一致
+
+        Returns:
+            新增文档块数（0 表示无新论文）
+        """
+        new_chunks: List[DocumentChunk] = []
+        for doc in paper_docs or []:
+            doc_id = str(doc.get("id") or "").strip()
+            if not doc_id:
+                continue
+            title = (doc.get("title") or "").strip()
+            abstract = (doc.get("abstract") or "").strip()
+            if not title and not abstract:
+                continue
+            pid = f"paper:{doc_id}"
+            meta = {
+                "source": "core_paper",
+                "title": title,
+                "authors": doc.get("authors") or [],
+                "year": doc.get("year"),
+                "venue": doc.get("venue") or "",
+                "doi": doc.get("doi") or "",
+            }
+            # 摘要块（长摘要拆分到 ≤800 字，控制块体积）
+            if abstract:
+                for idx, part in enumerate(self._split_long_text(abstract, 800)):
+                    cid = f"paper_{doc_id}_abstract" + (f"_{idx}" if idx else "")
+                    new_chunks.append(DocumentChunk(
+                        chunk_id=cid, patent_id=pid, section_type="paper",
+                        text=part, metadata=dict(meta),
+                    ))
+            # 标题块（便于按论文标题精确检索）
+            if title:
+                new_chunks.append(DocumentChunk(
+                    chunk_id=f"paper_{doc_id}_title", patent_id=pid,
+                    section_type="paper", text=title, metadata=dict(meta),
+                ))
+
+        if not new_chunks:
+            return 0
+
+        # 幂等去重：同一 chunk_id 已存在则跳过
+        existing_ids = {c.chunk_id for c in self.chunks}
+        fresh = [c for c in new_chunks if c.chunk_id not in existing_ids]
+        if not fresh:
+            return 0
+
+        start = len(self.chunks)
+        self.chunks.extend(fresh)
+        for i, c in enumerate(fresh):
+            idx = start + i
+            self.chunks_by_type[c.section_type].append(idx)
+            self.chunks_by_patent[c.patent_id].append(idx)
+
+        # chunk 对齐的质量分数组（论文取基线 0.5，不参与专利质量加权）
+        new_quality = np.full(len(fresh), 0.5, dtype=np.float32)
+        self._chunk_quality = (
+            np.concatenate([self._chunk_quality, new_quality])
+            if self._chunk_quality.size else new_quality
+        )
+
+        # 重建向量（论文块并入 TF-IDF 特征空间 + 稠密向量）
+        self._fit_vectors()
+        return len(fresh)
 
     def _chunk_patent(self, patent: StructuredPatent) -> List[DocumentChunk]:
         """将一篇专利拆分为多个可检索的文档块

@@ -128,6 +128,20 @@ class PatentInnovationEngine:
         rag_stats = self.rag_engine.get_statistics()
         print(f"  索引: {rag_stats['total_chunks']}个文档块")
 
+        # 6.5 追加学术论文语料（CORE 论文 → data/knowledge_base/papers_index.json）
+        # 论文独立于专利库，带 source=core_paper 标记；按 chunk_id 幂等去重
+        try:
+            papers_path = self.db_path.parent / "knowledge_base" / "papers_index.json"
+            if papers_path.exists():
+                papers_data = json.loads(papers_path.read_text(encoding="utf-8"))
+                papers = (papers_data.get("papers", [])
+                          if isinstance(papers_data, dict) else [])
+                n = self.rag_engine.add_papers(papers)
+                if n:
+                    print(f"  论文语料: 追加 {n} 个论文块 (source=core_paper)")
+        except Exception as e:
+            print(f"  论文语料加载失败: {e}")
+
         self.is_initialized = True
         self._init_stats = {
             "patents_analyzed": stats['fully_parsed'],
@@ -175,14 +189,25 @@ class PatentInnovationEngine:
         rag_bg = self.rag_engine.retrieve_by_problem(problem_description, top_k=top_k)
         results["similar_problems"] = [r.to_dict() for r in rag_bg]
 
-        # 从RAG检索相关专利
+        # 从RAG检索相关专利（论文块 source=core_paper 单独归入 related_papers）
         rag_results = self.rag_engine.retrieve(problem_description, top_k=top_k)
-        results["related_patents"] = [
-            {"patent_id": r.chunk.patent_id,
-             "text": r.chunk.text[:200],
-             "score": r.score}
-            for r in rag_results
-        ]
+        related_patents, related_papers = [], []
+        for r in rag_results:
+            if r.chunk.metadata.get("source") == "core_paper":
+                related_papers.append({
+                    "paper_id": r.chunk.patent_id.replace("paper:", "", 1),
+                    "title": r.chunk.metadata.get("title", ""),
+                    "text": r.chunk.text[:200],
+                    "score": r.score,
+                })
+            else:
+                related_patents.append({
+                    "patent_id": r.chunk.patent_id,
+                    "text": r.chunk.text[:200],
+                    "score": r.score,
+                })
+        results["related_patents"] = related_patents
+        results["related_papers"] = related_papers
 
         return results
 
