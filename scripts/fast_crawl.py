@@ -27,7 +27,9 @@ sys.path.insert(0, str(project_root))
 from src.api.google_patents import create_client_from_config
 
 DB_PATH = project_root / "data" / "patent_database" / "index.json"
-MAX_FETCH = 200     # 本次最多抓取数量
+TARGET_PATH = project_root / "data" / "target_patents.json"
+FIRECRAWL_TARGET_PATH = project_root / "data" / "target_patents_firecrawl.json"
+MAX_FETCH = 200     # 本次最多抓取数量（可用 --max 覆盖）
 WORKERS = 4         # 并发线程数
 MIN_INTERVAL = 1.0  # 全局请求间隔（秒）
 SAVE_EVERY = 10     # 每 N 篇保存一次
@@ -133,7 +135,7 @@ def apply_result(db, pid, category, patent):
             entry.update({
                 "id": pid, "title": patent.title or "",
                 "applicant": patent.applicant or "",
-                "ipc": "; ".join(patent.ipc_codes[:3]) if patent.ipc_codes else "",
+                "ipc": "; ".join(dict.fromkeys(patent.ipc_codes)) if patent.ipc_codes else "",
                 "category": category, "has_claims": False,
                 "has_description": False,
                 "crawled_at": datetime.now().isoformat(),
@@ -146,6 +148,34 @@ def apply_result(db, pid, category, patent):
 # ═══════════════════════════════════════════════════════════
 # 搜索
 # ═══════════════════════════════════════════════════════════
+
+def load_target_files():
+    """从 ipc_discovery / firecrawl_discover 产出的清单文件聚合待抓专利
+
+    返回: [(pid, category), ...]（去重，且只保留库中缺失或缺全文的）
+    """
+    targets = []
+    seen = set()
+    for tpath, cat in ((TARGET_PATH, "pipeline_robot"), (FIRECRAWL_TARGET_PATH, "pipeline_robot")):
+        if not tpath.exists():
+            continue
+        try:
+            data = json.loads(tpath.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            print(f"  [警告] 无法解析 {tpath.name}，跳过")
+            continue
+        ids = []
+        if isinstance(data, dict):
+            ids += data.get("new_to_crawl", []) or []
+            ids += data.get("missing_full_text", []) or []
+            ids += data.get("patents", []) or []
+        for pid in ids:
+            if pid and pid not in seen:
+                seen.add(pid)
+                targets.append((pid, cat))
+        print(f"  从 {tpath.name} 载入 {len(ids)} 个目标")
+    return targets
+
 
 def collect_targets(google, db, queries, max_fetch):
     """搜索并去重，返回待抓取列表"""
@@ -175,8 +205,17 @@ def collect_targets(google, db, queries, max_fetch):
 # ═══════════════════════════════════════════════════════════
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="并发抓取专利全文")
+    parser.add_argument("--max", type=int, default=MAX_FETCH,
+                        help=f"本次最多抓取数量（默认 {MAX_FETCH}）")
+    parser.add_argument("--no-targets", action="store_true",
+                        help="不读取 target_patents.json 清单，只用关键词搜索")
+    args = parser.parse_args()
+    max_fetch = args.max
+
     print(f"[{datetime.now():%H:%M:%S}] 并发爬取启动 "
-          f"(线程{WORKERS}, 节流{MIN_INTERVAL}s, 上限{MAX_FETCH}篇)")
+          f"(线程{WORKERS}, 节流{MIN_INTERVAL}s, 上限{max_fetch}篇)")
 
     google = create_client_from_config()
     if not google.check_proxy():
@@ -186,18 +225,32 @@ def main():
     db = load_db()
     print(f"  当前数据库: {len(db['patents'])} 篇")
 
-    queries = [
-        "配电网 故障隔离 自愈", "继电保护 整定计算 方法",
-        "虚拟电厂 需求响应 调度", "分布式光伏 并网 逆变器",
-        "电力变压器 状态监测 故障诊断", "输电线路 覆冰 在线监测",
-        "智能变电站 保护 自动化", "微电网 能量管理 优化调度",
-        "电力电缆 故障测距 定位", "储能系统 电池管理 协调控制",
-        "电力系统 暂态稳定 控制", "无功补偿 电压调节",
-        "管道检测机器人 缺陷识别", "管道巡检机器人 深度学习",
-        "管道 裂纹检测 超声", "pipeline inspection robot",
-    ]
+    # 优先从 ipc_discovery / firecrawl_discover 清单抓取
+    to_fetch = []
+    if not args.no_targets:
+        to_fetch = load_target_files()
+        if to_fetch:
+            print(f"  清单模式: {len(to_fetch)} 个目标（来自发现脚本）")
 
-    to_fetch = collect_targets(google, db, queries, MAX_FETCH)
+    if not to_fetch:
+        queries = [
+            "配电网 故障隔离 自愈", "继电保护 整定计算 方法",
+            "虚拟电厂 需求响应 调度", "分布式光伏 并网 逆变器",
+            "电力变压器 状态监测 故障诊断", "输电线路 覆冰 在线监测",
+            "智能变电站 保护 自动化", "微电网 能量管理 优化调度",
+            "电力电缆 故障测距 定位", "储能系统 电池管理 协调控制",
+            "电力系统 暂态稳定 控制", "无功补偿 电压调节",
+            "管道检测机器人 缺陷识别", "管道巡检机器人 深度学习",
+            "管道 裂纹检测 超声", "pipeline inspection robot",
+            "柔性直流输电 换流站", "绝缘子 污闪 在线监测",
+            "断路器 灭弧 状态检修", "电表 计量 误差 校验",
+        ]
+        to_fetch = collect_targets(google, db, queries, max_fetch)
+    else:
+        # 清单模式下也过滤掉已抓全的
+        to_fetch = [(pid, cat) for pid, cat in to_fetch
+                    if pid not in db["patents"] or not db["patents"][pid].get("has_claims")]
+        to_fetch = to_fetch[:max_fetch]
     print(f"\n[{datetime.now():%H:%M:%S}] 待抓取: {len(to_fetch)} 篇\n")
 
     rate_limiter = RateLimiter(MIN_INTERVAL)

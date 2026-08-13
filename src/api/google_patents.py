@@ -375,15 +375,32 @@ class GooglePatentsClient:
                     if assignee and not patent.applicant:
                         if isinstance(assignee, dict):
                             patent.applicant = assignee.get("name", "")
+                    # IPC分类号（JSON-LD 中的 ipc / cpc 字段）
+                    for ld_key in ("ipc", "cpc"):
+                        codes = ld_data.get(ld_key, [])
+                        if isinstance(codes, list):
+                            for code in codes:
+                                if isinstance(code, dict):
+                                    code = code.get("code") or code.get("text") or ""
+                                code = str(code).strip()
+                                if code and re.match(r'^[A-H]\d{2}', code) and code not in patent.ipc_codes:
+                                    patent.ipc_codes.append(code)
             except (json.JSONDecodeError, TypeError):
                 pass
 
-        # IPC分类号
+        # IPC分类号（页面分类链接，兼容多种链接形态）
         ipc_links = soup.find_all("a", href=re.compile(r"classification"))
         for link in ipc_links:
             code = link.get_text(strip=True)
             if code and re.match(r'^[A-H]\d{2}', code):
                 if code not in patent.ipc_codes:
+                    patent.ipc_codes.append(code)
+        # 兜底：<dd itemprop="ipc"> / <span itemprop="ipc"> / <meta itemprop="ipc"> 结构
+        if not patent.ipc_codes:
+            for tag in soup.find_all(["dd", "span", "meta"], itemprop="ipc"):
+                code = tag.get("content") or tag.get_text(strip=True)
+                code = (code or "").strip()
+                if code and re.match(r'^[A-H]\d{2}', code) and code not in patent.ipc_codes:
                     patent.ipc_codes.append(code)
 
     def search_patents(self, query: str, num_results: int = 20,
