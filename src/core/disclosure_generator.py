@@ -443,8 +443,8 @@ class DisclosureGenerator:
     @staticmethod
     def _is_complete(disclosure: str) -> bool:
         """检查交底书是否包含全部必要章节（防止单次生成只输出部分）"""
-        required = ["技术领域", "背景技术", "发明内容", "附图说明",
-                    "具体实施方式", "权利要求", "摘要"]
+        required = ["发明名称", "技术领域", "背景技术", "发明内容",
+                    "附图说明", "具体实施方式", "权利要求", "摘要"]
         missing = [s for s in required if s not in disclosure]
         # 长度兜底：完整交底书通常 > 5000 字
         if len(disclosure) < 5000:
@@ -514,12 +514,18 @@ class DisclosureGenerator:
                                               rag_context, suggestions,
                                               graph_context=getattr(self, "_graph_ref", ""))
         user_prompt += "\n\n请规划交底书大纲，输出 JSON。"
-        raw = self.llm.chat(OUTLINE_SYSTEM, user_prompt,
-                            max_tokens=3000, temperature=0.5)
-        outline = _extract_json(raw)
-        if not outline or "solution_steps" not in outline:
-            raise LLMError("大纲 JSON 解析失败")
-        return outline
+        # LLM 输出有随机性：解析失败时重试一次（全新调用），仍失败才回退
+        last_raw = ""
+        for attempt in range(2):
+            raw = self.llm.chat(OUTLINE_SYSTEM, user_prompt,
+                                max_tokens=3000, temperature=0.5)
+            outline = _extract_json(raw)
+            if outline and "solution_steps" in outline:
+                return outline
+            last_raw = raw or ""
+            logger.warning(f"[阶段1] 大纲解析失败(第{attempt + 1}次)，重试... "
+                           f"LLM输出前300字: {last_raw[:300]}")
+        raise LLMError("大纲 JSON 解析失败")
 
     # ─── 阶段 2：分章节生成 ──────────────────────────────
 
@@ -658,6 +664,10 @@ class DisclosureGenerator:
         logger.info("[回退] 单次 LLM 生成完整交底书...")
         result = self.llm.chat(SINGLE_SHOT_SYSTEM, user_prompt,
                                max_tokens=16000, temperature=0.7)
+        # 格式兜底：LLM 输出偶尔缺少"发明名称"标题（格式漂移），
+        # 用已知发明名称补插在开头，保证标准章节齐全
+        if "发明名称" not in result and title:
+            result = f"## 发明名称\n\n{title}\n\n" + result
         logger.info(f"[回退] 单次生成完成，{len(result)} 字")
         return result
 
