@@ -116,6 +116,8 @@
         <div class="status-badge"><span class="dot" id="dot"></span><span id="statusText">连接中...</span></div>
     </div></header>
 
+    <div id="configBanner" style="display:none;background:#fef3c7;border-bottom:1px solid #f59e0b;padding:10px 24px;font-size:13px;color:#92400e"></div>
+
     <div class="tabs">
         <div class="tab active" data-tab="generate">📝 生成交底书</div>
         <div class="tab" data-tab="search">🔍 专利搜索</div>
@@ -311,6 +313,18 @@ async function checkStatus(){
     }catch(e){document.getElementById('statusText').textContent='离线';}
 }
 checkStatus();setInterval(checkStatus,30000);
+checkConfigStatus();
+async function checkConfigStatus(){
+    try{
+        const r=await fetch('/api/config-status');const d=await r.json();
+        const banner=document.getElementById('configBanner');
+        if(d.llm)return;
+        banner.style.display='block';
+        banner.innerHTML='⚠️ <b>LLM API Key 未配置</b>：交底书生成功能不可用（专利搜索/浏览不受影响）。'+
+            '请编辑 <code>config/api_config.json</code> 中的 <code>llm.api_key</code>（DeepSeek Key），保存后刷新本页。'+
+            ' <a href="https://platform.deepseek.com" target="_blank" style="color:#92400e;font-weight:600">获取 Key →</a>';
+    }catch(e){}
+}
 
 // ═══ 生成 ═══
 function fillEx(i){document.getElementById('idea').value=EXAMPLES[i];}

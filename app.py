@@ -115,6 +115,34 @@ def api_status():
     return jsonify({"status": "loading", "message": _engine_status, "stats": {"patents": total}})
 
 
+@app.route("/api/config-status")
+def api_config_status():
+    """各功能模块配置状态（仅返回是否已配置，绝不暴露密钥本身）
+
+    用于前端首次使用引导：未配置 LLM Key 时提示用户如何启用生成功能。
+    """
+    cfg_path = Path(__file__).resolve().parent / "config" / "api_config.json"
+    status = {"llm": False, "embedding": False, "dashscope": False,
+              "core": False, "firecrawl": False}
+    try:
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+
+        def _has_key(section):
+            val = cfg.get(section, {}) if isinstance(cfg.get(section), dict) else {}
+            key = val.get("api_key", "") or ""
+            if not key:
+                return False
+            bad = ("你的", "替换", "xxxx", "sk-<", "sk-YOUR", "your")
+            return not any(b in str(key) for b in bad)
+
+        for section in status:
+            status[section] = _has_key(section)
+    except Exception as e:
+        logging.getLogger("patent_assistant").warning(
+            "配置状态读取失败: %s", e)
+    return jsonify(status)
+
+
 @app.route("/api/generate", methods=["POST"])
 def api_generate():
     """生成技术交底书"""
