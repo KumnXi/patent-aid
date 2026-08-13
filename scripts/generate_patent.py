@@ -84,7 +84,8 @@ def main():
 
     # ⑤ 导出 Word
     print("[4/5] 导出标准专利格式 Word...")
-    out_path = args.out or str(Path("output") / "交底书.docx")
+    project_root = Path(__file__).resolve().parent.parent
+    out_path = args.out or str(project_root / "output" / "交底书.docx")
     export_disclosure_to_word(disclosure, out_path, title=args.title or None)
 
     # ⑥ 交付自查（可选）：docx → 渲染 → VL 回看

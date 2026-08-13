@@ -7,11 +7,16 @@ import json
 from pathlib import Path
 from typing import Optional
 
+# 项目根目录（本文件位于 src/core/，向上两级即项目根）
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 
 class LLMPolisher:
     """LLM交底书润色器"""
 
-    def __init__(self, config_path: str = "config/api_config.json"):
+    def __init__(self, config_path: str = None):
+        if config_path is None:
+            config_path = str(_PROJECT_ROOT / "config" / "api_config.json")
         """初始化LLM润色器
         
         Args:

@@ -9,6 +9,7 @@
 
 import sys
 import io
+import os
 import time
 import traceback
 from pathlib import Path
@@ -21,6 +22,8 @@ else:
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+# 切换到项目根目录：保证数据/配置相对路径解析正确（从任意位置运行本脚本）
+os.chdir(project_root)
 
 # ═══════════════════════════════════════════════════════
 # 测试框架

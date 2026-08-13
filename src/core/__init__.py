@@ -27,6 +27,10 @@ from .llm_polisher import LLMPolisher
 
 from src.parsers.patent_parser import PatentParser, StructuredPatent
 
+# 项目根目录（本文件位于 src/core/__init__.py，向上两级即项目根）。
+# 所有默认数据/配置路径基于它解析，保证从任意工作目录运行都能找到数据。
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 
 class PatentInnovationEngine:
     """专利创新学习引擎——核心分析入口
@@ -46,25 +50,28 @@ class PatentInnovationEngine:
     """
 
     def __init__(self,
-                 db_path: str = "data/patent_database",
-                 config_dir: str = "config"):
+                 db_path: str = None,
+                 config_dir: str = None):
         """初始化引擎
 
         Args:
-            db_path: 专利数据库目录
-            config_dir: 配置目录
+            db_path: 专利数据库目录（默认基于项目根，与工作目录无关）
+            config_dir: 配置目录（默认基于项目根，与工作目录无关）
         """
+        db_path = db_path or str(PROJECT_ROOT / "data" / "patent_database")
+        config_dir = config_dir or str(PROJECT_ROOT / "config")
         self.db_path = Path(db_path)
         self.config_dir = Path(config_dir)
 
         # 组件
         self.db_loader = DatabaseLoader(str(db_path), str(config_dir))
         self.patent_parser = PatentParser(str(db_path), str(self.config_dir / "terminology"))
-        self.knowledge_graph = KnowledgeGraph(str(Path("data") / "knowledge_graph"))
+        self.knowledge_graph = KnowledgeGraph(
+            str(PROJECT_ROOT / "data" / "knowledge_graph"))
         self.innovation_miner = InnovationMiner()
         self.claim_analyzer = ClaimAnalyzer()
         self.terminology_analyzer = TerminologyAnalyzer(self.db_loader)
-        self.rag_engine = RAGEngine(str(Path("data") / "rag_index"))
+        self.rag_engine = RAGEngine(str(PROJECT_ROOT / "data" / "rag_index"))
 
         # 状态
         self.patents: List[StructuredPatent] = []

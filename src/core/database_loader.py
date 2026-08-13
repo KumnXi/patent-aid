@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 
+# 项目根目录（本文件位于 src/core/，向上两级即项目根）
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 
 def ipc_to_list(raw) -> list:
     """将任意格式的 IPC 字段转为字符串列表（兼容 list/str）"""
@@ -36,14 +39,16 @@ class DatabaseLoader:
     """
 
     def __init__(self,
-                 db_dir: str = "data/patent_database",
-                 config_dir: str = "config"):
+                 db_dir: str = None,
+                 config_dir: str = None):
         """初始化数据加载器
 
         Args:
-            db_dir: 专利数据库目录
-            config_dir: 配置文件目录
+            db_dir: 专利数据库目录（默认基于项目根，与工作目录无关）
+            config_dir: 配置文件目录（默认基于项目根，与工作目录无关）
         """
+        db_dir = db_dir or str(PROJECT_ROOT / "data" / "patent_database")
+        config_dir = config_dir or str(PROJECT_ROOT / "config")
         self.db_dir = Path(db_dir)
         self.config_dir = Path(config_dir)
 

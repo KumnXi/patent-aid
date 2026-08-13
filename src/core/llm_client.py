@@ -6,15 +6,21 @@
 
 import json
 import time
+from pathlib import Path
 from typing import Optional
 
 import requests
+
+# 项目根目录（本文件位于 src/core/，向上两级即项目根）
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class LLMClient:
     """通用 LLM 调用客户端（兼容 OpenAI API 格式）"""
 
-    def __init__(self, config_path: str = "config/api_config.json"):
+    def __init__(self, config_path: str = None):
+        if config_path is None:
+            config_path = str(_PROJECT_ROOT / "config" / "api_config.json")
         self.config = self._load_config(config_path)
         llm = self.config.get("llm", {})
         self.api_key: str = llm.get("api_key", "")

@@ -754,20 +754,31 @@ class RAGEngine:
             r.to_dict() for r in self.retrieve_implementation_examples(user_idea, top_k=5)
         ]
 
-        # 去重：按 chunk_id 跨维度去重（同一文档块只保留一次），
-        # 保留各维度最佳结果——同一专利的不同章节（背景/权利要求/实施例）
-        # 可各自成为不同维度的参考，不应互相挤掉。
+        # 去重：
+        # 1) 维度内按 patent_id 去重（同一专利的多个分块只保留相关度最高的一块，
+        #    避免 related_background 出现重复专利号）
+        # 2) 跨维度按 chunk_id 去重（同一文档块只保留一次；同一专利的不同章节
+        #    ——背景/权利要求/实施例——可各自成为不同维度的参考，不互相挤掉）
+        # 3) 每个维度按相关度降序排序
         seen_chunks = set()
         for dim in ["related_background", "similar_claims", "effect_templates", "implementation_references"]:
-            deduped = []
+            # 维度内按 patent_id 去重，保留 score 最高的块
+            best_by_patent = {}
             for item in context[dim]:
+                pid = item.get("patent_id", "")
+                if (pid not in best_by_patent or
+                        item.get("score", 0) > best_by_patent[pid].get("score", 0)):
+                    best_by_patent[pid] = item
+            deduped = sorted(best_by_patent.values(),
+                             key=lambda x: x.get("score", 0), reverse=True)
+            # 跨维度按 chunk_id 去重
+            final = []
+            for item in deduped:
                 cid = item.get("chunk_id", "")
                 if cid not in seen_chunks:
-                    deduped.append(item)
+                    final.append(item)
                     seen_chunks.add(cid)
-            # 按相关度降序排序
-            deduped.sort(key=lambda x: x.get("score", 0), reverse=True)
-            context[dim] = deduped
+            context[dim] = final
 
         return context
 
