@@ -13,6 +13,7 @@
 import sys
 import json
 import logging
+import re
 import threading
 import uuid
 import time
