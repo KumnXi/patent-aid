@@ -309,6 +309,34 @@ def test_compliance_autofix():
     assert "电线" not in result["fixed"] and "电闸" not in result["fixed"]
     assert "权利要求" in result["fixed"], "自动修复误伤了正文"
 
+# ─── 想法看图输入测试（vl_client + idea_vision，无网络）─────────
+
+@suite.test("VL客户端可用或安全降级")
+def test_vl_client():
+    from src.api.vl_client import VLClient
+    client = VLClient()
+    assert isinstance(client.is_available(), bool), "is_available 应为布尔"
+    assert client.model, "缺少模型配置"
+    # 未配置 key 时 chat_with_image 返回 None（不抛异常）
+    if not client.is_available():
+        assert client.chat_with_image("不存在.png", "测试") is None
+
+@suite.test("idea_vision JSON解析加固")
+def test_idea_vision_parse():
+    from src.utils.idea_vision import _parse_structured
+    # 带 markdown 代码块和首尾杂质的回复应能解析
+    text = '好的，结果如下：\n```json\n{"idea": "一种测试", "title": "一种测试装置"}\n```\n以上。'
+    parsed = _parse_structured(text)
+    assert parsed.get("title") == "一种测试装置", f"解析失败: {parsed}"
+    assert parsed.get("idea") == "一种测试"
+    # 无 JSON 的回复返回空 dict
+    assert _parse_structured("抱歉无法识别图片") == {}
+    # 多轮字段合并：已填字段不被覆盖，空字段被补充
+    from src.utils.idea_vision import _merge_fields
+    merged = _merge_fields({"title": "A", "idea": ""}, {"title": "B", "idea": "补充"})
+    assert merged["title"] == "A", "已填字段被覆盖"
+    assert merged["idea"] == "补充", "空字段未补充"
+
 # ═══════════════════════════════════════════════════════
 # 运行
 # ═══════════════════════════════════════════════════════

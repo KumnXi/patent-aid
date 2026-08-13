@@ -24,7 +24,16 @@ user_invocable: true
 ## 执行步骤
 
 1. **确认想法已收集**：从用户描述中提炼 idea（含缺陷/方法/效果要素）
-2. **调用流水线**（内部自动执行三阶段 LLM 生成 → 防无中生有修复 → 权利要求校验 → 加密保存历史 → Word 导出）：
+2. **若用户贴图（照片/手绘/系统框图/论文截图/PDF）**：先经 VL"看图"提炼字段，再进入流水线。图片转成结构化字段后才交给 DeepSeek（`src/api/vl_client.py` 文字桥接）：
+
+```bash
+# 单图或多图：输出 {idea, title, tech_field, purpose, core_method, problems}
+D:/Anaconda3/envs/mathmodel/python.exe -m src.utils.idea_vision 图1.png 图2.png
+```
+
+   - 图片内容（设备结构/流程/数值）会被提炼成 idea 字段，缺的字段留空让用户补或走默认
+   - 未配置 DashScope / 读图失败时自动回退纯文本输入，不阻断流程
+3. **调用流水线**（内部自动执行三阶段 LLM 生成 → 防无中生有修复 → 权利要求校验 → 合规审查 → 加密保存历史 → Word 导出）：
 
 ```bash
 D:/Anaconda3/envs/mathmodel/python.exe scripts/generate_patent.py "技术想法" \
