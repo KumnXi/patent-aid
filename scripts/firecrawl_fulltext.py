@@ -34,7 +34,7 @@ from src.api.google_patents import GooglePatentsClient
 
 DB_PATH = PROJECT_ROOT / "data" / "patent_database" / "index.json"
 PROGRESS_PATH = PROJECT_ROOT / "data" / "patent_database" / "firecrawl_progress.json"
-REQUEST_INTERVAL = 2.0
+REQUEST_INTERVAL = 6.0
 SAVE_EVERY = 5
 
 

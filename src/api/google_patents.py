@@ -232,6 +232,13 @@ class GooglePatentsClient:
 
         patent = GooglePatent(id=patent_id, url=url)
 
+        # 新版 Google Patents 页面（Polymer Web Components）无 itemprop 标记，
+        # 使用 v2 解析器（claim-text / description-paragraph / patent-title 结构）
+        if not soup.find("section", itemprop="claims") and not soup.find("section", itemprop="description"):
+            v2 = self._parse_patent_page_v2(soup, patent)
+            if v2 and (v2.claims or v2.description or v2.title):
+                return v2
+
         # === 标题 ===
         # Google Patents 标题可能在多种标签中
         title_tag = soup.find("h1", class_="title")
@@ -275,6 +282,117 @@ class GooglePatentsClient:
                 patent.pdf_url = "https:" + patent.pdf_url
 
         return patent
+    def _parse_patent_page_v2(self, soup: BeautifulSoup, patent: GooglePatent) -> Optional[GooglePatent]:
+        """新版 Google Patents 页面解析器
+
+        新版页面（Polymer Web Components）结构：
+        - 标题: <h1 class="title"> 或 <h2> 标题文本
+        - 摘要: <section class="abstract">
+        - 权利要求: <h2>Claims (N)</h2> 后的 <div class="claim-text"> 集合
+        - 说明书: <h2>Description</h2> 后的 <div class="description-paragraph"> 集合
+        - 无 itemprop 标记（旧解析器失效的原因）
+        """
+        try:
+            # === 标题 ===
+            title_tag = soup.find("h1", class_="title")
+            if not title_tag:
+                # 新版：<h2> 中第一个非导航标题
+                for h in soup.find_all(["h1", "h2", "h3"]):
+                    t = h.get_text(strip=True)
+                    if t and t not in ("Patents", "Abstract", "Description", "Claims", "Classifications",
+                                       "Images", "Landscapes", "Legal Events", "Concepts", "Similar Documents",
+                                       "Cited By", "Patent Citations", "Priority And Related Applications",
+                                       "Priority Applications", "Applications Claiming Priority", "Translated from"):
+                        title_tag = h
+                        break
+            if title_tag:
+                patent.title = title_tag.get_text(strip=True)
+                patent.title = re.sub(r"^" + re.escape(patent.id) + r"\s*[-\u2013]\s*", "", patent.title)
+                patent.title = re.sub(r"\s*-\s*Google Patents$", "", patent.title)
+
+            # === 摘要 ===
+            abstract_tag = soup.find("section", class_="abstract")
+            if not abstract_tag:
+                abstract_tag = soup.find("div", class_="abstract")
+            if abstract_tag:
+                patent.abstract = abstract_tag.get_text(strip=True)
+                # 去掉 "Abstract translated from" 等导航尾巴
+                for junk in ("Abstract", "translated from"):
+                    idx = patent.abstract.find(junk)
+                    if idx > 0:
+                        patent.abstract = patent.abstract[:idx]
+                    patent.abstract = patent.abstract.strip()
+
+            # === 权利要求 ===
+            # 新版结构: <div class="claims style-scope patent-text"> 内含 <div class="claim-text">
+            claims_section = None
+            for c in soup.find_all("div", class_="claims"):
+                cls = c.get("class") or []
+                if "patent-text" in cls or "style-scope" in cls:
+                    claims_section = c
+                    break
+            if claims_section is None:
+                claims_section = soup.find("div", class_="claims")
+            if claims_section:
+                # 收集 claim-text 容器（每项权利要求）
+                claim_parts = []
+                for c in claims_section.find_all("div", class_="claim-text"):
+                    txt = c.get_text(" ", strip=True)
+                    if txt:
+                        claim_parts.append(txt)
+                if claim_parts:
+                    patent.claims = "\n".join(claim_parts)
+                else:
+                    # 兜底：整个容器文本
+                    patent.claims = claims_section.get_text("\n", strip=True)
+
+            # === 说明书 ===
+            # 新版结构: <div class="description style-scope patent-text"> 内含
+            # <description-paragraph> 与 <technical-field> 等自定义标签
+            desc_section = None
+            for d in soup.find_all("div", class_="description"):
+                cls = d.get("class") or []
+                if "patent-text" in cls or "style-scope" in cls:
+                    desc_section = d
+                    break
+            if desc_section is None:
+                desc_section = soup.find("div", class_="description")
+            if desc_section:
+                desc_parts = []
+                # 收集所有直接文本块（含 description-paragraph 与自定义标签）
+                for p in desc_section.find_all("div", class_="description-paragraph"):
+                    txt = p.get_text(" ", strip=True)
+                    if txt:
+                        desc_parts.append(txt)
+                if not desc_parts:
+                    # 自定义标签结构（technical-field/background 等）
+                    for tag in desc_section.find_all(["technical-field", "background", "description-paragraph"]):
+                        txt = tag.get_text(" ", strip=True)
+                        if txt:
+                            desc_parts.append(txt)
+                if desc_parts:
+                    patent.description = "\n".join(desc_parts)
+                else:
+                    patent.description = desc_section.get_text("\n", strip=True)
+
+            # === IPC 分类号（新版：Classifications 区 <a> 链接） ===
+            for link in soup.find_all("a", href=re.compile(r"classification")):
+                code = link.get_text(strip=True)
+                if code and re.match(r"^[A-H]\d{2}", code):
+                    if code not in patent.ipc_codes:
+                        patent.ipc_codes.append(code)
+
+            # === PDF 链接 ===
+            pdf_link = soup.find("a", href=re.compile(r"patentimages\.storage\.googleapis\.com"))
+            if pdf_link:
+                patent.pdf_url = pdf_link["href"]
+                if patent.pdf_url.startswith("//"):
+                    patent.pdf_url = "https:" + patent.pdf_url
+
+            return patent
+        except Exception as e:
+            print(f"  [v2解析] 异常: {e}")
+            return None
 
     def _extract_section_text(self, section) -> str:
         """
