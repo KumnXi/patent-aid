@@ -74,6 +74,13 @@ class DatabaseLoader:
             return self._index_cache
 
         index_file = self.db_dir / "index.json"
+        index_gz = self.db_dir / "index.json.gz"
+        if index_gz.exists():
+            # gzip 压缩存储（轻量模式）：透明解压读取
+            import gzip
+            with gzip.open(index_gz, "rt", encoding="utf-8") as f:
+                self._index_cache = json.load(f)
+            return self._index_cache
         if not index_file.exists():
             self._index_cache = {"metadata": {}, "patents": {}, "keywords": {}, "applicants": {}}
             return self._index_cache

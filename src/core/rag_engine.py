@@ -845,11 +845,16 @@ class RAGEngine:
                 "chunks_by_patent": {k: v for k, v in self.chunks_by_patent.items()},
             }, f, ensure_ascii=False, indent=2)
 
-        # 保存向量化器
+        # 保存向量化器（剥离绑定方法避免序列化整个引擎对象 → 220MB 缩至 KB 级）
         import pickle
         vec_path = self.storage_path / "vectorizer.pkl"
-        with open(vec_path, "wb") as f:
-            pickle.dump(self.vectorizer, f)
+        _orig_tokenizer = getattr(self.vectorizer, "tokenizer", None)
+        try:
+            self.vectorizer.tokenizer = None
+            with open(vec_path, "wb") as f:
+                pickle.dump(self.vectorizer, f)
+        finally:
+            self.vectorizer.tokenizer = _orig_tokenizer
 
         vec_data_path = self.storage_path / "vectors.npz"
         if self.chunk_vectors is not None:
@@ -889,14 +894,22 @@ class RAGEngine:
             filename: 索引文件名
         """
         filepath = self.storage_path / filename
+        gz_path = self.storage_path / (filename + ".gz")
+        if not filepath.exists() and gz_path.exists():
+            filepath = gz_path
         if not filepath.exists():
             print(f"索引文件不存在: {filepath}")
             return
 
         import pickle
 
-        with open(filepath, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        if filepath.suffix == ".gz":
+            import gzip as _gzip
+            with _gzip.open(filepath, "rt", encoding="utf-8") as f:
+                data = json.load(f)
+        else:
+            with open(filepath, "r", encoding="utf-8") as f:
+                data = json.load(f)
 
         # 重建文档块和映射
         self.chunks = [
@@ -916,11 +929,13 @@ class RAGEngine:
             k: v for k, v in data.get("chunks_by_patent", {}).items()
         })
 
-        # 加载向量化器和向量
+        # 加载向量化器和向量（恢复 tokenizer 绑定方法）
         vec_path = self.storage_path / "vectorizer.pkl"
         if vec_path.exists():
             with open(vec_path, "rb") as f:
                 self.vectorizer = pickle.load(f)
+            if getattr(self.vectorizer, "tokenizer", None) is None:
+                self.vectorizer.tokenizer = self._chinese_tokenizer
 
         vec_data_path = self.storage_path / "vectors.npz"
         if vec_data_path.exists() and self.chunks:
@@ -976,8 +991,9 @@ class RAGEngine:
             True 表示需要重建
         """
         index_file = self.storage_path / "rag_index.json"
+        index_gz = self.storage_path / "rag_index.json.gz"
         vec_file = self.storage_path / "vectors.npz"
-        if not index_file.exists() or not vec_file.exists():
+        if (not index_file.exists() and not index_gz.exists()) or not vec_file.exists():
             return True
 
         meta_path = self.storage_path / "index_meta.json"
