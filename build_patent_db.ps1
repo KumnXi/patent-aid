@@ -70,10 +70,12 @@ if (-not (Test-Proxy)) {
 $steps = @(
     @{ Name="1. IPC字段回填（补391篇空IPC，断点续传）";  Args="scripts/backfill_ipc.py" },
     @{ Name="2. IPC领域发现（电力+管道全谱系）";          Args="scripts/ipc_discovery.py $DiscoverPages" },
-    @{ Name="3. 批量抓取全文（清单模式）";               Args="scripts/fast_crawl.py --max $MaxFetch" },
-    @{ Name="4. 数据库治理（规范化+去重+质量报告）";     Args="scripts/db_maintain.py" },
-    @{ Name="5. 重建知识图谱与RAG索引";                 Args="scripts/build_analysis.py" },
-    @{ Name="6. 检索质量抽查（管道+电力查询）";          Args="scripts/check_retrieval.py" },
+    @{ Name="3. CNIPA官方免代理抓取（免费，先跑探测）";   Args="scripts/cnipa_crawl.py --all-groups --max-pages 10" },
+    @{ Name="4. Firecrawl云端全文补充（credits有限）";    Args="scripts/firecrawl_fulltext.py --limit 20" },
+    @{ Name="5. 批量抓取全文（Google代理通道，清单模式）"; Args="scripts/fast_crawl.py --max $MaxFetch" },
+    @{ Name="6. 数据库治理（规范化+去重+质量报告）";     Args="scripts/db_maintain.py" },
+    @{ Name="7. 重建知识图谱与RAG索引";                 Args="scripts/build_analysis.py" },
+    @{ Name="8. 检索质量抽查（管道+电力查询）";          Args="scripts/check_retrieval.py" },
 )
 
 if ($Full) {
