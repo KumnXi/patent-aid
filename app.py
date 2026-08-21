@@ -77,9 +77,19 @@ def get_patent_db():
         return _patent_db
     
     db_path = PROJECT_ROOT / "data" / "patent_database" / "index.json"
-    with open(db_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    
+    if db_path.exists():
+        with open(db_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    else:
+        # 轻量存储模式：index.json 已删除时，透明读取 gz 压缩版
+        import gzip
+        gz_path = db_path.with_suffix(".json.gz")
+        if not gz_path.exists():
+            raise FileNotFoundError(
+                f"专利数据库不存在: {db_path} 或 {gz_path}")
+        with gzip.open(gz_path, "rt", encoding="utf-8") as f:
+            data = json.load(f)
+
     _patent_db = {
         "patents": data.get("patents", {}),
         "metadata": data.get("metadata", {}),
@@ -363,7 +373,7 @@ def api_authenticity_check():
 
     from src.core.data_authenticity_checker import DataAuthenticityChecker
     try:
-        db = get_patent_db() if _patent_db is not None else None
+        db = get_patent_db()
         report = DataAuthenticityChecker().check(disclosure, idea, db)
         return jsonify({"success": True, "report": report})
     except Exception as e:
@@ -772,4 +782,5 @@ if __name__ == "__main__":
     get_engine()
     
     print("\n  启动Web服务器...\n")
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    # 默认仅本机访问；如需局域网访问改为 host="0.0.0.0"（注意无鉴权，API Key 会被他人消耗）
+    app.run(host="127.0.0.1", port=5000, debug=False)
