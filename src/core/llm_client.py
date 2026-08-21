@@ -91,7 +91,12 @@ class LLMClient:
                     data = resp.json()
                     content = data["choices"][0]["message"]["content"]
                     if not content or not content.strip():
-                        raise LLMError("LLM 返回空内容")
+                        # DeepSeek 偶发返回空 content（服务波动），与限流同等待遇重试，
+                        # 而非直接失败（否则大纲阶段会穿透重试直接回退单次生成）
+                        last_error = LLMError("LLM 返回空内容")
+                        print(f"[LLM] 返回空内容，等待后重试({attempt+1}/3)...")
+                        time.sleep(2)
+                        continue
                     return content
                 elif resp.status_code == 429:
                     # 限流，等待后重试

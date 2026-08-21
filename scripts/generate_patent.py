@@ -41,6 +41,8 @@ def main():
     parser.add_argument("--purpose", default="", help="发明目的/要解决的问题")
     parser.add_argument("--core-method", default="", help="核心方法/技术路线")
     parser.add_argument("--problems", default="", help="现有技术问题")
+    parser.add_argument("--standards", default="",
+                        help="标准背景知识（如 DL/T 940 寿命评估导则，将注入背景/方案/权利要求/附图）")
     parser.add_argument("--out", default="", help="输出Word路径（默认 output/交底书.docx）")
     parser.add_argument("--selfcheck", action="store_true",
                         help="导出后自动渲染回看（docx→图→VL质检，需LibreOffice）")
@@ -53,6 +55,7 @@ def main():
         "purpose": args.purpose,
         "core_method": args.core_method,
         "problems": args.problems,
+        "standards": args.standards,
     }
 
     print("=" * 60)
