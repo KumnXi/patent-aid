@@ -18,10 +18,11 @@ PatentAid 的 6 个内置 Claude Code skills 已打包为一个通用 marketplac
 
 ```
 /plugin marketplace add https://github.com/KumnXi/patent-aid
-/plugin install idea-to-disclosure@patent-aid-skills
+/plugin install patent-aid@patent-aid-skills
 ```
 
-安装后可随时调用 `/idea-to-disclosure`、`/patent-writer` 等 skill。
+安装后 6 个 skill 自动可用，可随时调用 `/patent-aid:idea-to-disclosure`、`/patent-aid:patent-writer`
+等（插件 skill 以 `插件名:skill名` 命名空间触发；也可直接描述需求，由 Claude 按意图自动调用）。
 
 ## Skills 一览
 

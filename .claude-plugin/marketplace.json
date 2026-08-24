@@ -8,11 +8,14 @@
     {
       "name": "patent-aid",
       "description": "AI patent writing skills: from idea to submission-ready patent disclosure (docx) with anti-hallucination checks and claim-format validation. Works for any technical domain.",
-      "version": "0.9.0",
+      "version": "1.0.0",
       "source": "./",
       "author": {
         "name": "KumnXi"
-      }
+      },
+      "skills": [
+        "./.claude/skills/"
+      ]
     }
   ]
 }
