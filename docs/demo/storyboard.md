@@ -44,12 +44,12 @@ python scripts/selfcheck_disclosure.py output/disclosure.docx
 | 00:05-00:10 | SC-02 | 对比痛点 | 左侧：手写专利的纸张/Word 文档堆叠（红 X 覆盖）；右侧：LLM 输出"实验数据表明准确率提升 30.7%"（红 X 覆盖） | 旁白：「And generic LLMs make it worse — they invent data your examiner will reject.」 | 节奏快，2 张图 0:03 + 0:02 切换 |
 | 00:10-00:15 | SC-03 | 产品亮相 | 屏幕中央放大显示 `PatentAid` 标题 + 三条特性徽章：`Built-in anti-hallucination` `Standard patent format` `Native editable formulas` | 旁白：「PatentAid gives you a complete, standard-format disclosure — with built-in anti-hallucination.」 | 徽章依次淡入，节奏 0.5s/个 |
 | 00:15-00:25 | SC-10 | 一句话想法 | 终端窗口（或 Web UI 输入框）高亮。命令/输入内容：`python scripts/generate_patent.py "A deep-learning-based method for defect detection in underground pipelines" --out output/disclosure.docx`（中文版可用「地下管道缺陷检测的多传感器融合机器人系统」） | 旁白：「One command. One idea. That's the input.」 | 输入时光标闪烁 1s 后回车 |
-| 00:25-00:35 | SC-11 | 阶段 1 大纲规划 | 终端日志滚动：`[阶段 1/3] 大纲规划 LLM 输出 JSON 大纲 ... 01 背景  02 方案  03 效果 ... 64 项权利要求`。进度条 0→33% | 旁白：「Stage one: outline planning. Ten sections, sixty-four claim slots — generated as a JSON outline.」 | 进度条用绿色渐变，里程碑节点高亮 |
-| 00:35-00:45 | SC-12 | 阶段 2 分章节生成 | 终端日志：`[阶段 2/3] 分章节生成 ... 8 维评分，<70 自动重写`。进度条 33→66%。右侧弹出评分小卡片：结构/长度/编号/技术深度/权利要求/实现细节/相关性/新颖度/对原想法支持（共 9 维，第 9 项作为后续镜头） | 旁白：「Stage two: section-by-section writing, with a nine-dimension quality check on every section.」 | 评分小卡片用色阶：绿 ≥85、橙 70-84、红 <70 |
+| 00:25-00:35 | SC-11 | 阶段 1 大纲规划 | 终端日志滚动：`[阶段 1/3] 大纲规划 LLM 输出 JSON 大纲 ... 01 背景  02 方案  03 效果 ... 64 项权利要求（以实际生成结果为准）`。进度条 0→33% | 旁白：「Stage one: outline planning. Ten sections, claim slots — generated as a JSON outline.」 | 进度条用绿色渐变，里程碑节点高亮 |
+| 00:35-00:45 | SC-12 | 阶段 2 分章节生成 | 终端日志：`[阶段 2/3] 分章节生成 ... 9 维评分，<70 自动重写`。进度条 33→66%。右侧弹出评分小卡片：结构/长度/编号/技术深度/权利要求/实现细节/相关性/新颖度/对原想法支持（共 9 维，第 9 项作为后续镜头） | 旁白：「Stage two: section-by-section writing, with a nine-dimension quality check on every section.」 | 评分小卡片用色阶：绿 ≥85、橙 70-84、红 <70 |
 | 00:45-00:50 | SC-13 | 阶段 3 质检迭代 | 终端日志：`[阶段 3/3] 质检迭代 完成`。进度条 100% 满格 + 短暂烟花特效 | 旁白：「Stage three: quality iteration. Weak sections rewrite themselves — rule-based, no extra LLM calls.」 | 此处可叠字幕「Three-stage generation · Quality iteration built-in」 |
 | 00:50-01:00 | SC-20 | 防编造触发 | 终端日志切到新一屏：`[④ 防编造审查] 自动修复编造数据`。红色高亮一段虚构结论：`「实验数据显示，缺陷识别效率提升 30%」` | 旁白：「Now the part that matters most: anti-hallucination.」 | 红色高亮用 0.2s 闪烁两次 |
 | 01:00-01:15 | SC-21 | 防编造修复前后 | 同一段文本被划掉（红色删除线），下方绿色高亮修复版：`「通过采用上述方案，能够实现对管道缺陷的有效识别」`（即把"实验数据 + 30%"降级为"示例性表述"）。左侧显示 before，右侧显示 after | 旁白：「The AI tried to invent an experiment with a 30% number. We strip out fabricated data, downgrade unverifiable quantities to qualitative language, and delete made-up patent numbers.」 | 红 → 绿切换用 0.4s 叠化 |
-| 01:15-01:30 | SC-22 | 修复报告清单 | 终端滚动展示修复报告：`[防编造] 移除虚构专利号 CN10XXXX · 移除虚构实验数据 · 降级 3 处量化表述 · 1 处专利号 CN11... 替换为「相关现有技术」` | 旁白：「Every fix is logged. Nothing slips through.」 | 列表逐行出现，节奏 0.4s/行 |
+| 01:15-01:30 | SC-22 | 修复报告清单 | 终端滚动展示修复报告：`[防编造] 移除虚构专利号 CN10XXXX · 移除虚构实验数据 · 降级 3 处量化表述 · 删除编造专利号 CN11...` | 旁白：「Every fix is logged. Nothing slips through.」 | 列表逐行出现，节奏 0.4s/行 |
 | 01:30-01:45 | SC-30 | 9 维质检报告 | 弹窗显示完整 `quality_report.json` 可视化（雷达图或条形图）：结构 92 / 长度 88 / 编号 95 / 技术深度 86 / 权利要求 90 / 实现细节 85 / 相关性 94 / 新颖度 82 / 对原想法支持 96 | 旁白：「Nine-dimension quality review: structure, length, numbering, technical depth, claims, implementation, relevance, novelty, support for your original idea.」 | 雷达图用 9 轴，从中心向外动画展开 0.6s |
 | 01:45-02:00 | SC-31 | 权利要求校验 | 终端日志：`[⑤ 权利要求校验] 编号 · 完整性 · 引用 · 特征条款 · 存在性 · 顺序 → 6/6 通过`。每项前显示绿色对勾（依次弹出） | 旁白：「Claim-format validation: numbering, completeness, referencing, feature clauses, existence, order — six checks, all green.」 | 对勾动画间隔 0.3s |
 | 02:00-02:15 | SC-32 | 无新物质检查 | 终端日志：`[新增] 无新物质检查（no-new-matter）通过`。右侧小卡片：原始想法 vs 权利要求关键词对比，相似度 96% | 旁白：「And a no-new-matter check keeps your claims faithful to the idea you described.」 | 关键词对比用双栏并列，相似度数字放大显示 |
@@ -57,7 +57,7 @@ python scripts/selfcheck_disclosure.py output/disclosure.docx
 | 02:20-02:30 | SC-40 | 打开 Word | 文件管理器 / 命令行 `start output/disclosure.docx`（Windows）或 `open output/disclosure.docx`（macOS）。Word 打开文档，正文第一页显示 `说明书` 标题 + 章节 | 旁白：「Export. A standard Word document, ready to edit.」 | 打开过程用 1.5× 加速，最后 0.5s 正常速 |
 | 02:30-02:40 | SC-41 | OMML 公式可编辑 | 滚动到 `具体实施方式` 章节，鼠标点击公式 `$E = mc^2$`（或 `L = \frac{1}{2} \rho v^2 S C_L`），弹出可编辑的公式编辑器（Word 内置，OMML 格式），双击进入编辑 | 旁白：「Formulas are native OMML — not images, not MathType. You can edit them right inside Word.」 | 鼠标点击动作 0.5s，进度 0.5s 放大公式 |
 | 02:40-02:50 | SC-42 | Graphviz 附图 | 滚动到附图位置：一张 300 dpi 的专利风格框图（系统架构图，包含「图像采集 → 预处理 → 深度学习模型 → 缺陷分类」模块）。鼠标右键 → 图片另存为 → 确认 PNG 格式 | 旁白：「Figures are auto-generated from Mermaid via Graphviz, 300 dpi, patent-style.」 | 滚动动作 0.5s，右键菜单 0.5s，另存为对话框 0.5s |
-| 02:50-02:55 | SC-43 | 完整目录 | 整页缩小滚动，依次显示：摘要 / 权利要求书 / 说明书 / 附图说明。底部字数统计：`全文 3,847 字 · 10 章 · 64 项权利要求 · 3 张附图` | 旁白：「One disclosure, standard format, all yours.」 | 滚动 1.5× 加速，最后静止 1s |
+| 02:50-02:55 | SC-43 | 完整目录 | 整页缩小滚动，依次显示：摘要 / 权利要求书 / 说明书 / 附图说明。底部字数统计：`全文 3,847 字 · 10 章 · 64 项权利要求 · 3 张附图（以实际生成结果为准）` | 旁白：「One disclosure, standard format, all yours.」 | 滚动 1.5× 加速，最后静止 1s |
 | 02:55-03:00 | SC-50 | 结尾引导 | 黑底居中：`⭐ Star on GitHub` + URL `github.com/<your-org>/patent-aid` + 副标题 `MIT License · Three-stage generation · Anti-hallucination built-in` | 旁白：「Star on GitHub — link in the description.」 | 静止 4s，最后 1s 渐隐 |
 
 ### 1.1 主视频转场与音频建议
@@ -77,8 +77,8 @@ python scripts/selfcheck_disclosure.py output/disclosure.docx
 |---|---|---|---|---|
 | 00:00-00:08 | AG-01 | 终端窗口，居中运行命令（短版本）：`generate_patent.py "An AI-based pipeline defect detector"`。日志快速滚动显示 `[阶段 1] 大纲完成 · [阶段 2] 分章节完成 · [阶段 3] 质检通过` | 顶部字幕 `Stage 1 → 2 → 3 · all gates passed` | 滚动用 2× 加速 |
 | 00:08-00:15 | AG-02 | 终端切到新一屏，红色高亮一行：`[防编造] 检测到虚构表述："实验数据表明检测效率提升 30%"` | 字幕 `Anti-hallucination triggered →` | 高亮闪烁两次 |
-| 00:15-00:22 | AG-03 | 同一行划掉（红色删除线），下方绿色高亮修复版：`→ "通过采用上述方案，能够实现对管道缺陷的有效识别"` | 字幕 `30% → qualitative · patent# → "prior art"` | 修复用 0.4s 叠化 |
-| 00:22-00:30 | AG-04 | 终端最后一行：`[✓] 导出完成：output/disclosure.docx (48 KB · 10 章 · 64 权利要求)`，然后用 `start output/disclosure.docx` 打开，文件图标显示 | 字幕 `No more hallucinated data.` | 打开用 1.5×，最后静止 2s |
+| 00:15-00:22 | AG-03 | 同一行划掉（红色删除线），下方绿色高亮修复版：`→ "通过采用上述方案，能够实现对管道缺陷的有效识别"` | 字幕 `30% → qualitative · patent# → removed` | 修复用 0.4s 叠化 |
+| 00:22-00:30 | AG-04 | 终端最后一行：`[✓] 导出完成：output/disclosure.docx (48 KB · 10 章 · 64 权利要求 · 以实际生成结果为准)`，然后用 `start output/disclosure.docx` 打开，文件图标显示 | 字幕 `No more hallucinated data.` | 打开用 1.5×，最后静止 2s |
 
 ### 2.1 gif 压缩建议
 
@@ -179,5 +179,6 @@ ffmpeg -i docs/demo/demo-3min.mp4 -ss 00:00:05 -vframes 1 docs/images/demo/video
 - [ ] 主视频包含 OMML 公式可编辑（02:30-02:40）镜头
 - [ ] 主视频包含 Graphviz 附图（02:40-02:50）镜头
 - [ ] 视频中无真实 API key、个人邮箱、手机号等隐私信息
+- [ ] 视频中的数字（权利要求数 / 正文字数 / 文件大小 / 附图数等）按实际运行输出录制，勿照抄示例数字
 - [ ] 终端字体在 1920×1080 下清晰可读
 - [ ] 结尾 GitHub URL 正确，与仓库实际路径一致
