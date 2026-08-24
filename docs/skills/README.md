@@ -65,7 +65,7 @@ git push origin v1.0.0
 ### 2. 本地校验
 
 ```bash
-claude plugin validate .          # 期望输出：✔ Validation passed
+claude plugin validate .          # 需实测确认通过（结果以实际输出为准，勿断言）
 ```
 
 ### 3. 提交官方 marketplace（Anthropic Claude Code 插件市场）
