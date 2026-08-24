@@ -2,6 +2,11 @@
 
 # PatentAid — AI Patent Disclosure Writer
 
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square)]()
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)]()
+[![Patents](https://img.shields.io/badge/Patents-9%2C800%2B-blue?style=flat-square)]()
+[![Tests](https://img.shields.io/badge/Tests-31-blue?style=flat-square)]()
+
 **Turn your technical idea into a submission-ready patent disclosure (Word), in 3 minutes.**
 
 Built-in anti-hallucination checks and claim-format validation — the AI won't invent data
