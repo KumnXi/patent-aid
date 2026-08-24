@@ -1,0 +1,21 @@
+{
+  "name": "patent-aid-skills",
+  "description": "AI patent writing skills: idea to submission-ready disclosure (docx) with anti-hallucination",
+  "owner": {
+    "name": "KumnXi"
+  },
+  "plugins": [
+    {
+      "name": "patent-aid",
+      "description": "AI patent writing skills: from idea to submission-ready patent disclosure (docx) with anti-hallucination checks and claim-format validation. Works for any technical domain.",
+      "version": "1.0.0",
+      "source": "./",
+      "author": {
+        "name": "KumnXi"
+      },
+      "skills": [
+        "./.claude/skills/"
+      ]
+    }
+  ]
+}

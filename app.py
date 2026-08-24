@@ -24,7 +24,7 @@ PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 # 产品版本号（随功能迭代递增）
-VERSION = "0.9.0"
+VERSION = "1.0.0"
 
 from flask import Flask, render_template, request, jsonify, send_file, Response
 
