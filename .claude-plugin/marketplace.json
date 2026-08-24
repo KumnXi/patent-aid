@@ -1,0 +1,16 @@
+{
+  "name": "patent-aid-skills",
+  "version": "1.0.0",
+  "description": "AI patent writing skills: idea to submission-ready disclosure (docx) with anti-hallucination",
+  "owner": {
+    "name": "KumnXi"
+  },
+  "skills": [
+    "idea-to-disclosure",
+    "patent-writer",
+    "compliance-checker",
+    "patent-supervisor",
+    "patent-orchestrator",
+    "patent-fetcher"
+  ]
+}

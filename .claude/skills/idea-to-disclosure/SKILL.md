@@ -1,6 +1,6 @@
 ---
 name: idea-to-disclosure
-description: 从技术想法生成标准专利交底书（项目核心流程）。use when 用户提供技术想法/问题/方案并要求"生成交底书""写技术交底"或一键出 Word，从想法起步而非从交底书起步
+description: "Convert a technical idea into a submission-ready Chinese patent disclosure (docx). Three-stage LLM generation with anti-hallucination checks and claim-format validation. Works for any technical domain; built-in examples include power-grid and pipeline-inspection robotics. use when 用户提供技术想法/问题/方案并要求\"生成交底书\"\"写技术交底\"或一键出 Word，从想法起步而非从交底书起步"
 user_invocable: true
 ---
 
